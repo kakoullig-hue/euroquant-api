@@ -1,0 +1,24 @@
+# EuroQuant API Gateway — Production Requirements
+# Python 3.11+ recommended
+
+# ── Web framework ──────────────────────────────
+fastapi[all]==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+
+# ── Jarvis engine dependencies ─────────────────
+# (these come from the notebook — keep in sync)
+langchain-anthropic==0.2.4
+langgraph==0.2.34
+pydantic==2.9.2
+pypdf==5.0.1
+pdfplumber==0.11.4
+pytesseract==0.3.13
+pdf2image==1.17.0
+requests==2.32.3
+rapidfuzz==3.10.0
+neo4j==5.25.0
+python-dotenv==1.0.1
+
+# ── PDF Report Generator (Mission 7) ──────────
+reportlab==4.2.5

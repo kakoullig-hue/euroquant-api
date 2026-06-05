@@ -1,0 +1,123 @@
+{
+  "profile": {
+    "founder_id": "FND-SYNTH-BALT-014",
+    "full_name": "Kaspars Veidemanis",
+    "nationality": "LV",
+    "pep_status": "associate_pep",
+    "sanctions_hit": false,
+    "sanctions_list_source": null,
+    "associated_companies": [
+      {
+        "company_name": "Nordhaven Maritime Autonomy AS",
+        "registration_country": "EE",
+        "is_offshore_flag": false,
+        "fatf_risk_level": "low",
+        "share_percentage": 58.0,
+        "active_status": true,
+        "incorporation_date": "2020-02-18",
+        "public_procurement_exposure": true,
+        "procurement_value_eur": 6200000.0,
+        "defense_gov_tech_sector": true
+      },
+      {
+        "company_name": "Baltic Nominee Holdings Ltd",
+        "registration_country": "VG",
+        "is_offshore_flag": true,
+        "fatf_risk_level": "high",
+        "share_percentage": 100.0,
+        "active_status": true,
+        "incorporation_date": "2018-09-30",
+        "public_procurement_exposure": false,
+        "procurement_value_eur": null,
+        "defense_gov_tech_sector": false
+      },
+      {
+        "company_name": "Riga DeepSensor SIA",
+        "registration_country": "LV",
+        "is_offshore_flag": false,
+        "fatf_risk_level": "low",
+        "share_percentage": 34.0,
+        "active_status": true,
+        "incorporation_date": "2021-05-11",
+        "public_procurement_exposure": true,
+        "procurement_value_eur": 1100000.0,
+        "defense_gov_tech_sector": true
+      },
+      {
+        "company_name": "Kurzeme Defence Logistics SIA",
+        "registration_country": "LV",
+        "is_offshore_flag": false,
+        "fatf_risk_level": "medium",
+        "share_percentage": 50.0,
+        "active_status": false,
+        "incorporation_date": "2016-04-02",
+        "public_procurement_exposure": false,
+        "procurement_value_eur": null,
+        "defense_gov_tech_sector": true
+      }
+    ],
+    "political_connections": [
+      {
+        "person_name": "Andris Kalnins",
+        "role_title": "Former State Secretary, Ministry of Defence (LV)",
+        "relationship_type": "board_member",
+        "pathway_distance": 1,
+        "jurisdiction": "LV",
+        "is_pep_direct": true,
+        "still_active": false
+      },
+      {
+        "person_name": "EU Defence Fund - Capability Directorate",
+        "role_title": "EDF Capability Programme Office (Brussels)",
+        "relationship_type": "business_partner",
+        "pathway_distance": 2,
+        "jurisdiction": "EU",
+        "is_pep_direct": false,
+        "still_active": true
+      },
+      {
+        "person_name": "Liga Ozola",
+        "role_title": "MP, National Security Committee (LV)",
+        "relationship_type": "donor_recipient",
+        "pathway_distance": 2,
+        "jurisdiction": "LV",
+        "is_pep_direct": true,
+        "still_active": true
+      }
+    ],
+    "governance_intensity": 71.0,
+    "market_percentile": 88.0,
+    "risk_flags": [
+      "DIRECT BOARD-LEVEL PEP LINK: Former MoD State Secretary (LV) holds a non-executive board seat at Nordhaven, an active EU / Estonian defence procurement bidder (EUR 6.2M pipeline).",
+      "LAYERED OFFSHORE CONTROL: 100% of founder equity routed through Baltic Nominee Holdings Ltd (BVI, FATF HIGH) - beneficial ownership obscured behind a nominee structure.",
+      "INDIRECT PEP (D-2): Pathway link to a sitting MP on the National Security Committee via a political donation record - potential procurement-influence channel.",
+      "DEFENCETECH DUAL-USE EXPOSURE: Autonomous maritime C2 / sensor stack is dual-use, EU Defence Fund co-financed, with NATO-adjacent supply-chain exposure.",
+      "CUMULATIVE PUBLIC PROCUREMENT: EUR 7.3M across Nordhaven + Riga DeepSensor - concentration in a single Ministry-of-Defence buyer.",
+      "DISSOLVED ENTITY TRAIL: Kurzeme Defence Logistics SIA dissolved 2023 holding prior MoD contracts - discontinuity in the audit trail.",
+      "ADVERSE MEDIA (UNVERIFIED): 1 regional outlet alleges an undisclosed advisor relationship - single source, not corroborated."
+    ],
+    "analyst_notes": "ELEVATED GOVERNANCE RISK - ENHANCED DUE DILIGENCE REQUIRED before term sheet. Subject is sanctions-clear but exhibits a board-level PEP link and an offshore ownership layer that together breach institutional governance thresholds. Recommended pre-conditions: (1) confirm beneficial ownership of the BVI vehicle, (2) obtain a conflict-of-interest waiver covering MoD procurement, (3) verify the board member's post-public-office cooling-off compliance. JARVIS VERDICT: HIGH RISK / CONDITIONAL."
+  },
+  "processing_timestamp": "2026-06-04T09:14:08.221904+00:00",
+  "document_hash": "9f2b7c41 ae08d3 55e1c9 0b6a4f2e8d7c1a93 4e5f6a7b8c9d0e1f",
+  "extractor_version": "jarvis-v3.1.0",
+  "extraction_confidence": 0.96,
+  "used_ocr_fallback": false,
+  "neo4j_persisted": true,
+  "benchmark_percentile": 88.0,
+  "benchmark_cohort_size": 0,
+  "benchmark_source": "cold_start_fatf",
+  "reference_check": {
+    "checked_at": "2026-06-04T09:14:05.880210+00:00",
+    "sanctions_hits": [],
+    "company_verifications": [
+      {"company_name": "Nordhaven Maritime Autonomy AS", "verified": true},
+      {"company_name": "Riga DeepSensor SIA", "verified": true},
+      {"company_name": "Kurzeme Defence Logistics SIA", "verified": true},
+      {"company_name": "Baltic Nominee Holdings Ltd", "verified": false}
+    ],
+    "risk_delta": 6.0,
+    "sources_checked": ["OFAC_SDN", "EU_CONSOLIDATED", "OPENCORPORATES"],
+    "errors": ["OpenCorporates: no public filing located for Baltic Nominee Holdings Ltd (VG) - jurisdiction opacity"]
+  }
+}
