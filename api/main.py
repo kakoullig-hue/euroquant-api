@@ -33,6 +33,7 @@ import time
 import uuid
 import logging
 import tempfile
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -44,6 +45,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+
+# ── APScheduler (M-1.1) ──────────────────────────────────────────────
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    APSCHEDULER_AVAILABLE = True
+except ImportError:
+    APSCHEDULER_AVAILABLE = False
 
 # Path manipulation so `from reports.pdf_generator import ...` resolves correctly
 # regardless of which directory uvicorn is launched from.
@@ -104,6 +112,9 @@ class _EC:
     FILE_EMPTY        = "EQ-4005"  # zero-byte upload
     FILE_TOO_LARGE    = "EQ-4006"  # exceeds MAX_INGESTION_MB at gateway level
 
+    # Sanctions / PEP operations (3xxx — API-layer codes, distinct from jarvis_v3.py 3xxx)
+    SANCTIONS_INVALIDATED = "EQ-3002"  # emergency cache invalidation completed (audit marker)
+
     # System / engine (9xxx)
     ENGINE_UNAVAILABLE        = "EQ-9001"  # Jarvis import failed at startup
     ENGINE_INTERNAL_ERROR     = "EQ-9002"  # unhandled exception in engine
@@ -134,15 +145,53 @@ try:
     # In production this imports the compiled Jarvis engine
     # For Jupyter-developed Jarvis, run nbconvert first:
     #   jupyter nbconvert --to script jarvis_v3.ipynb
-    from jarvis_v3 import jarvis_engine, JarvisState  # type: ignore
+    from jarvis_v3 import (  # type: ignore
+        jarvis_engine,
+        JarvisState,
+        SanctionsChecker,
+        PEPRegistryRefresher,
+    )
     JARVIS_AVAILABLE = True
     log.info("✅ Jarvis engine imported successfully.")
 except ImportError as e:
     log.error("❌ Jarvis engine import failed: %s", e)
     log.error("   Run: jupyter nbconvert --to script jarvis_v3.ipynb")
     JARVIS_AVAILABLE = False
-    jarvis_engine = None
-    JarvisState   = dict  # type: ignore
+    jarvis_engine        = None
+    JarvisState          = dict           # type: ignore
+    SanctionsChecker     = None           # type: ignore
+    PEPRegistryRefresher = None           # type: ignore
+
+# ═══════════════════════════════════════════════════════════════════════
+# M-1.1: Lifespan — APScheduler startup/shutdown
+# Uses asynccontextmanager (replaces deprecated @app.on_event).
+# ═══════════════════════════════════════════════════════════════════════
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler = None
+    if APSCHEDULER_AVAILABLE and PEPRegistryRefresher is not None:
+        pep_refresher = PEPRegistryRefresher()
+        scheduler = BackgroundScheduler(daemon=True)
+        scheduler.add_job(
+            pep_refresher.refresh,
+            "interval",
+            hours=24,
+            id="pep_refresh",
+            replace_existing=True,
+        )
+        scheduler.start()
+        log.info("✅ APScheduler started: EU PEP refresh every 24h (job: pep_refresh).")
+    else:
+        log.warning(
+            "⚠️  APScheduler not available — EU PEP refresh disabled. "
+            "Install: pip install apscheduler"
+        )
+    yield
+    if scheduler is not None:
+        scheduler.shutdown(wait=False)
+        log.info("APScheduler stopped.")
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # FASTAPI APP
@@ -154,6 +203,7 @@ app = FastAPI(
     version=API_VERSION,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -525,6 +575,80 @@ async def analyze_and_generate_report(
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
             "X-Request-ID":        body["request_id"],
+        },
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# M-1.3: Emergency Sanctions Cache Invalidation
+# Internal endpoint — same auth as /analyze.
+# Use when OFAC or EU publishes an urgent designation outside normal TTL.
+# ═══════════════════════════════════════════════════════════════════════
+
+@app.post("/internal/sanctions/invalidate", tags=["Internal"])
+async def invalidate_sanctions_cache(
+    api_key: str = Depends(verify_api_key),
+):
+    """
+    Emergency invalidation of all sanctions and PEP caches.
+
+    Forces a fresh download on the next check() call for both OFAC SDN
+    and EU Consolidated lists. Also clears the Redis PEP last-refresh
+    timestamp so the APScheduler job triggers a full re-fetch on its
+    next tick (within 24h, or restart the scheduler for immediate effect).
+
+    **Use when:** OFAC or EU publishes an urgent designation and you cannot
+    wait for the normal cache TTL to expire.
+    """
+    invalidated_at = datetime.now(timezone.utc).isoformat()
+    caches_cleared = []
+
+    if SanctionsChecker is not None:
+        try:
+            ofac_checker = SanctionsChecker()
+            ofac_checker.invalidate_cache("OFAC_SDN")
+            caches_cleared.append("ofac")
+        except Exception as exc:
+            log.warning("[%s] OFAC cache invalidation error: %s", _EC.SANCTIONS_INVALIDATED, exc)
+
+        try:
+            eu_checker = SanctionsChecker()
+            eu_checker.invalidate_cache("EU_CONSOLIDATED")
+            caches_cleared.append("eu_consolidated")
+        except Exception as exc:
+            log.warning("[%s] EU cache invalidation error: %s", _EC.SANCTIONS_INVALIDATED, exc)
+    else:
+        log.warning("[%s] SanctionsChecker unavailable — skipping cache clear.", _EC.SANCTIONS_INVALIDATED)
+
+    # Delete Redis PEP timestamp to force refresh on next scheduler tick
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        try:
+            import redis as _redis_lib
+            client = _redis_lib.from_url(redis_url, socket_connect_timeout=2, decode_responses=True)
+            client.delete("jarvis:pep_last_refresh")
+            caches_cleared.append("pep_registry")
+            log.info("[%s] Redis key 'jarvis:pep_last_refresh' deleted.", _EC.SANCTIONS_INVALIDATED)
+        except Exception as exc:
+            log.warning("[%s] Redis PEP key deletion failed: %s", _EC.SANCTIONS_INVALIDATED, exc)
+    else:
+        # Fallback: delete local cache file
+        local_cache = Path(".pep_refresh_cache")
+        if local_cache.exists():
+            local_cache.unlink()
+            log.info("[%s] Local .pep_refresh_cache deleted.", _EC.SANCTIONS_INVALIDATED)
+        caches_cleared.append("pep_registry")
+
+    log.warning(
+        "[%s] Emergency sanctions cache invalidation: caches=%s api_key=%s...",
+        _EC.SANCTIONS_INVALIDATED, caches_cleared, api_key[:8],
+    )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "invalidated_at":  invalidated_at,
+            "caches_cleared":  caches_cleared,
         },
     )
 
