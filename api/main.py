@@ -57,6 +57,7 @@ except ImportError:
 # regardless of which directory uvicorn is launched from.
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+_sys.path.insert(0, str(Path(__file__).resolve().parent))  # api/ → 'from usage import ...' works
 
 # ── Load .env — works regardless of which directory uvicorn is launched from
 _HERE = Path(__file__).resolve().parent
@@ -121,6 +122,11 @@ class _EC:
     ENGINE_INTERNAL_ERROR     = "EQ-9002"  # unhandled exception in engine
     REPORT_MODULE_UNAVAILABLE = "EQ-9004"  # reports.pdf_generator import failed
     PDF_GENERATION_ERROR      = "EQ-9003"  # PDF build raised an exception
+
+# ── M-5.2: Usage metering ────────────────────────────────────────────
+from usage import UsageMeter, tenant_id_from_key  # noqa: E402
+
+_usage_meter = UsageMeter(redis_url=os.getenv("REDIS_URL"))
 
 # ── In-memory PDF report cache (keyed by request_id) ─────────────────
 # Entries are written on /analyze success and consumed by GET /report/{id}.
@@ -457,6 +463,12 @@ async def analyze_pdf(
             "jarvis_version":        result.extractor_version,
         }
 
+        # M-5.2: Record usage — fire-and-forget, never fails the response
+        try:
+            _usage_meter.record(tenant_id_from_key(api_key), elapsed_ms)
+        except Exception as _ue:
+            log.warning("[%s] Usage meter error (non-fatal): %s", request_id, _ue)
+
         # Auto-generate PDF report and cache for download (non-fatal if unavailable)
         report_url: Optional[str] = None
         try:
@@ -699,6 +711,27 @@ async def get_audit_record(
             detail=f"[{_EC.AUDIT_NOT_FOUND}] No audit record found for request_id={request_id}",
         )
     return JSONResponse(status_code=200, content=record)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# M-5.2: Usage Stats Endpoint
+# Returns only the caller's own usage — never another tenant's.
+# ═══════════════════════════════════════════════════════════════════════
+
+@app.get("/api/v1/usage", tags=["Billing"])
+async def get_usage(
+    api_key: str = Depends(verify_api_key),
+):
+    """
+    Return usage statistics for the calling tenant.
+
+    Stats are keyed by tenant_id = SHA-256[:8] of the API key, so each
+    key sees only its own counters. Returns zero values if no calls have
+    been made yet (e.g. fresh key, or Redis flushed between deployments).
+    """
+    tid   = tenant_id_from_key(api_key)
+    stats = _usage_meter.get(tid)
+    return JSONResponse(status_code=200, content=stats)
 
 
 # ═══════════════════════════════════════════════════════════════════════
