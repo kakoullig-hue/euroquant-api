@@ -111,6 +111,7 @@ class _EC:
     FILE_TYPE_INVALID = "EQ-4004"  # non-PDF file submitted
     FILE_EMPTY        = "EQ-4005"  # zero-byte upload
     FILE_TOO_LARGE    = "EQ-4006"  # exceeds MAX_INGESTION_MB at gateway level
+    AUDIT_NOT_FOUND   = "EQ-4007"  # request_id not found in audit log
 
     # Sanctions / PEP operations (3xxx — API-layer codes, distinct from jarvis_v3.py 3xxx)
     SANCTIONS_INVALIDATED = "EQ-3002"  # emergency cache invalidation completed (audit marker)
@@ -126,6 +127,12 @@ class _EC:
 # No TTL eviction needed at this scale; revisit if memory pressure becomes
 # an issue (migrate to Redis or presigned S3 objects at that point).
 _PDF_CACHE: dict[str, bytes] = {}
+
+# ── M-2.2: Audit log (keyed by request_id) ───────────────────────────
+# Stores immutable metadata for every successful /analyze call.
+# Zero document content — compliance requirement.
+# Migrate to Redis or PostgreSQL before multi-worker production deployment.
+_AUDIT_LOG: dict[str, dict] = {}
 
 # ── Sanity check on startup ───────────────────────────────────────────
 if not HASHED_API_KEYS:
@@ -437,6 +444,18 @@ async def analyze_pdf(
             elapsed_ms,
         )
 
+        # M-2.2: Write to audit log before returning — zero document content
+        _AUDIT_LOG[request_id] = {
+            "request_id":            request_id,
+            "document_hash":         result.document_hash,
+            "processing_timestamp":  result.processing_timestamp,
+            "governance_intensity":  result.profile.governance_intensity,
+            "pep_status":            result.profile.pep_status,
+            "sanctions_hit":         result.profile.sanctions_hit,
+            "elapsed_ms":            elapsed_ms,
+            "jarvis_version":        result.extractor_version,
+        }
+
         # Auto-generate PDF report and cache for download (non-fatal if unavailable)
         report_url: Optional[str] = None
         try:
@@ -651,6 +670,34 @@ async def invalidate_sanctions_cache(
             "caches_cleared":  caches_cleared,
         },
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# M-2.2: Audit Trail Endpoint
+# Returns ONLY metadata — zero document content (compliance requirement).
+# ═══════════════════════════════════════════════════════════════════════
+
+@app.get("/api/v1/audit/{request_id}", tags=["Audit"])
+async def get_audit_record(
+    request_id: str,
+    api_key: str = Depends(verify_api_key),
+):
+    """
+    Retrieve the audit record for a completed analysis.
+
+    Returns only: request_id, document_hash (SHA-256), processing_timestamp,
+    governance_intensity, pep_status, sanctions_hit, elapsed_ms, jarvis_version.
+
+    **No document content is ever included** — this endpoint exists specifically
+    to satisfy Article 22 GDPR audit obligations without re-exposing PII.
+    """
+    record = _AUDIT_LOG.get(request_id)
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"[{_EC.AUDIT_NOT_FOUND}] No audit record found for request_id={request_id}",
+        )
+    return JSONResponse(status_code=200, content=record)
 
 
 # ═══════════════════════════════════════════════════════════════════════
