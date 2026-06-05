@@ -1,0 +1,34 @@
+# Secrets — must never enter the image
+.env
+api/.env
+api/.env.example
+
+# Python bytecode
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git internals
+.git
+.gitignore
+.gitattributes
+
+# Node (dashboard assets, not needed in API image)
+node_modules/
+
+# Jupyter — source notebooks are not needed at runtime
+*.ipynb
+.ipynb_checkpoints/
+
+# Generated reports (ephemeral by design)
+reports/*.pdf
+my_first_report.pdf
+EuroQuant_DemoReport.pdf
+
+# Sanctions cache (populated at runtime via volume mount)
+.cache/
+
+# Claude Code workspace
+.claude/
