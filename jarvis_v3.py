@@ -165,6 +165,26 @@ MAX_FILE_MB         = 50    # configurable via MAX_INGESTION_MB env var
 MIN_PRINTABLE_RATIO = 0.70  # Unicode L/N/P/Z ratio threshold
 JARVIS_VERSION  = "jarvis-v3.1.0"
 
+
+class _EC:
+    """
+    Structured error codes for enterprise support ticket correlation.
+    Format: EQ-{CATEGORY}{SEQ} where category 1=ingestion, 3=model API.
+    Include the code in error_message so ops teams can grep logs by code.
+    """
+    # Ingestion / PDF (1xxx)
+    PDF_INSUFFICIENT_TEXT = "EQ-1001"  # encrypted, scan-only, or too short after all fallbacks
+    FILE_NOT_FOUND        = "EQ-1002"  # path does not exist at pipeline entry
+    FILE_TOO_LARGE        = "EQ-1003"  # exceeds MAX_INGESTION_MB limit
+    PDF_PARSE_ERROR       = "EQ-1004"  # exception during pypdf/pdfplumber/OCR
+    FILE_READ_ERROR       = "EQ-1006"  # OS-level read failure (permissions, NFS, etc.)
+
+    # Claude API / extraction (3xxx)
+    CIRCUIT_BREAKER_OPEN    = "EQ-3001"  # repeated API failures tripped the breaker
+    MODEL_SCHEMA_ERROR      = "EQ-3002"  # Pydantic validation error on LLM output
+    MODEL_RETRIES_EXHAUSTED = "EQ-3003"  # all retry attempts failed
+
+
 log.info("✅ Jarvis v3.1 imports OK. Model: %s", MODEL_NAME)
 
 
@@ -947,7 +967,7 @@ def ingest_pdf_node(state: JarvisState) -> dict:
     # Guard: existence
     if not os.path.exists(pdf_path):
         return {"status": "extraction_failed",
-                "error_message": f"File not found: {pdf_path}",
+                "error_message": f"[{_EC.FILE_NOT_FOUND}] File not found: {pdf_path}",
                 "raw_text": "", "document_hash": "",
                 "used_ocr_fallback": False, "text_confidence": 0.0}
 
@@ -955,7 +975,8 @@ def ingest_pdf_node(state: JarvisState) -> dict:
     size_ok, size_error = _check_file_size(pdf_path)
     if not size_ok:
         log.error("[Agent 1 — Ingestion] %s", size_error)
-        return {"status": "extraction_failed", "error_message": size_error,
+        return {"status": "extraction_failed",
+                "error_message": f"[{_EC.FILE_TOO_LARGE}] {size_error}",
                 "raw_text": "", "document_hash": "",
                 "used_ocr_fallback": False, "text_confidence": 0.0}
 
@@ -967,7 +988,7 @@ def ingest_pdf_node(state: JarvisState) -> dict:
     except Exception as e:
         log.error("[Agent 1 — Ingestion] File read failed: %s", e)
         return {"status": "extraction_failed",
-                "error_message": f"File read failed: {e}",
+                "error_message": f"[{_EC.FILE_READ_ERROR}] File read failed: {e}",
                 "raw_text": "", "document_hash": "",
                 "used_ocr_fallback": False, "text_confidence": 0.0}
 
@@ -994,7 +1015,7 @@ def ingest_pdf_node(state: JarvisState) -> dict:
     except Exception as e:
         log.error("[Agent 1 — Ingestion] Extraction error: %s", e)
         return {"status": "extraction_failed",
-                "error_message": f"PDF parsing failed: {e}",
+                "error_message": f"[{_EC.PDF_PARSE_ERROR}] PDF parsing failed: {e}",
                 "raw_text": "", "document_hash": doc_hash,
                 "used_ocr_fallback": False, "text_confidence": 0.0}
 
@@ -1002,7 +1023,7 @@ def ingest_pdf_node(state: JarvisState) -> dict:
     if len(text) < MIN_TEXT_LENGTH:
         return {"status": "extraction_failed",
                 "error_message": (
-                    f"Only {len(text)} chars extracted after all fallbacks "
+                    f"[{_EC.PDF_INSUFFICIENT_TEXT}] Only {len(text)} chars extracted after all fallbacks "
                     f"(min: {MIN_TEXT_LENGTH}). "
                     "PDF may be encrypted, corrupt, or scanned without OCR support."
                 ),
@@ -1106,7 +1127,7 @@ def extract_risk_node(state: JarvisState) -> dict:
     # Circuit breaker check — fast-fail if API is repeatedly down
     if _extraction_circuit_breaker.is_open():
         msg = (
-            "Circuit breaker OPEN — Anthropic API has failed repeatedly. "
+            f"[{_EC.CIRCUIT_BREAKER_OPEN}] Circuit breaker OPEN — Anthropic API has failed repeatedly. "
             f"Auto-retry in {_CircuitBreaker.RECOVERY_TIMEOUT}s. "
             "Check https://status.anthropic.com"
         )
@@ -1165,7 +1186,7 @@ def extract_risk_node(state: JarvisState) -> dict:
                 log.error("[Agent 2 — Extraction] Non-retryable error: %s", e)
                 _extraction_circuit_breaker.record_failure()
                 return {"result": None, "status": "model_error",
-                        "error_message": f"Extraction schema error: {e}"}
+                        "error_message": f"[{_EC.MODEL_SCHEMA_ERROR}] Extraction schema error: {e}"}
 
             if is_last:
                 break
@@ -1185,7 +1206,10 @@ def extract_risk_node(state: JarvisState) -> dict:
     return {
         "result": None,
         "status": "model_error",
-        "error_message": f"Model call failed after {len(_RETRY_DELAYS)} attempts: {last_error}",
+        "error_message": (
+            f"[{_EC.MODEL_RETRIES_EXHAUSTED}] "
+            f"Model call failed after {len(_RETRY_DELAYS)} attempts: {last_error}"
+        ),
     }
 
 

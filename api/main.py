@@ -68,6 +68,27 @@ VALID_API_KEYS   = {k.strip() for k in API_KEYS_RAW.split(",") if k.strip()}
 JARVIS_VERSION   = "jarvis-v3.1.0"
 API_VERSION      = "1.0.0"
 
+
+class _EC:
+    """
+    Structured error codes for enterprise support ticket correlation.
+    Include in HTTPException detail and JSON error bodies so clients
+    and ops teams can identify failure categories without log access.
+    """
+    # Auth / request validation (4xxx)
+    MISSING_API_KEY   = "EQ-4001"  # X-API-Key header absent
+    INVALID_API_KEY   = "EQ-4002"  # key present but not in VALID_API_KEYS
+    RATE_LIMIT        = "EQ-4003"  # per-key request window exhausted
+    FILE_TYPE_INVALID = "EQ-4004"  # non-PDF file submitted
+    FILE_EMPTY        = "EQ-4005"  # zero-byte upload
+    FILE_TOO_LARGE    = "EQ-4006"  # exceeds MAX_INGESTION_MB at gateway level
+
+    # System / engine (9xxx)
+    ENGINE_UNAVAILABLE        = "EQ-9001"  # Jarvis import failed at startup
+    ENGINE_INTERNAL_ERROR     = "EQ-9002"  # unhandled exception in engine
+    REPORT_MODULE_UNAVAILABLE = "EQ-9004"  # reports.pdf_generator import failed
+    PDF_GENERATION_ERROR      = "EQ-9003"  # PDF build raised an exception
+
 # ── In-memory PDF report cache (keyed by request_id) ─────────────────
 # Entries are written on /analyze success and consumed by GET /report/{id}.
 # No TTL eviction needed at this scale; revisit if memory pressure becomes
@@ -134,10 +155,16 @@ async def verify_api_key(x_api_key: Optional[str] = Header(None)) -> str:
       • Track usage (key_id, endpoint, timestamp) for billing
     """
     if not x_api_key:
-        raise HTTPException(status_code=401, detail="Missing X-API-Key header")
+        raise HTTPException(
+            status_code=401,
+            detail=f"[{_EC.MISSING_API_KEY}] Missing X-API-Key header",
+        )
     if x_api_key not in VALID_API_KEYS:
         log.warning("Invalid API key attempted: %s...", x_api_key[:8])
-        raise HTTPException(status_code=403, detail="Invalid API key")
+        raise HTTPException(
+            status_code=403,
+            detail=f"[{_EC.INVALID_API_KEY}] Invalid API key",
+        )
     return x_api_key
 
 
@@ -154,7 +181,7 @@ def _check_rate_limit(api_key: str) -> None:
     if len(bucket) >= _RATE_MAX_REQS:
         raise HTTPException(
             status_code=429,
-            detail=f"Rate limit exceeded: {_RATE_MAX_REQS} requests per {_RATE_WINDOW_SEC}s",
+            detail=f"[{_EC.RATE_LIMIT}] Rate limit exceeded: {_RATE_MAX_REQS} requests per {_RATE_WINDOW_SEC}s",
             headers={"Retry-After": str(_RATE_WINDOW_SEC)},
         )
     bucket.append(now)
@@ -241,14 +268,14 @@ async def analyze_pdf(
     if not JARVIS_AVAILABLE or jarvis_engine is None:
         raise HTTPException(
             status_code=503,
-            detail="Jarvis engine is currently unavailable. Try again later.",
+            detail=f"[{_EC.ENGINE_UNAVAILABLE}] Jarvis engine is currently unavailable. Try again later.",
         )
 
     # Validate file type
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=400,
-            detail=f"Only PDF files accepted. Got: {file.filename}",
+            detail=f"[{_EC.FILE_TYPE_INVALID}] Only PDF files accepted. Got: {file.filename}",
         )
 
     # Read file into memory (size-bounded)
@@ -257,11 +284,14 @@ async def analyze_pdf(
     size_mb   = len(contents) / (1024 * 1024)
 
     if len(contents) == 0:
-        raise HTTPException(status_code=400, detail="Empty file received")
+        raise HTTPException(
+            status_code=400,
+            detail=f"[{_EC.FILE_EMPTY}] Empty file received",
+        )
     if len(contents) > max_bytes:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large: {size_mb:.1f}MB exceeds limit of {MAX_UPLOAD_MB}MB",
+            detail=f"[{_EC.FILE_TOO_LARGE}] File too large: {size_mb:.1f}MB exceeds limit of {MAX_UPLOAD_MB}MB",
         )
 
     log.info(
@@ -363,7 +393,7 @@ async def analyze_pdf(
         log.exception("[%s] Unhandled engine error", request_id)
         raise HTTPException(
             status_code=500,
-            detail=f"Internal engine error: {type(e).__name__}",
+            detail=f"[{_EC.ENGINE_INTERNAL_ERROR}] Internal engine error: {type(e).__name__}",
         )
     finally:
         # ── EPHEMERAL GUARANTEE ───────────────────────────────────────
@@ -453,13 +483,14 @@ async def analyze_and_generate_report(
     except ImportError:
         raise HTTPException(
             status_code=503,
-            detail="Report module unavailable. Check reports/pdf_generator.py is installed.",
+            detail=f"[{_EC.REPORT_MODULE_UNAVAILABLE}] Report module unavailable. "
+                   "Check reports/pdf_generator.py is installed.",
         )
     except Exception as e:
         log.exception("PDF generation failed")
         raise HTTPException(
             status_code=500,
-            detail=f"PDF generation failed: {type(e).__name__}",
+            detail=f"[{_EC.PDF_GENERATION_ERROR}] PDF generation failed: {type(e).__name__}",
         )
 
     founder_id = result_dict["profile"]["founder_id"]
