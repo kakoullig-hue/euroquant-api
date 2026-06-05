@@ -28,3 +28,6 @@ redis>=5.0.0
 
 # ── M-0.3: hash API keys at rest ──────────────────────────────────
 bcrypt>=4.0.0
+
+# ── M-1.1: scheduled PEP registry refresh ─────────────────────────
+apscheduler>=3.10.0

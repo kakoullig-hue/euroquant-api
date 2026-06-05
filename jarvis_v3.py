@@ -184,6 +184,7 @@ class _EC:
     CIRCUIT_BREAKER_OPEN    = "EQ-3001"  # repeated API failures tripped the breaker
     MODEL_SCHEMA_ERROR      = "EQ-3002"  # Pydantic validation error on LLM output
     MODEL_RETRIES_EXHAUSTED = "EQ-3003"  # all retry attempts failed
+    PEP_FEED_FAILURE        = "EQ-3004"  # EU PEP registry fetch failed (4xx/5xx or network)
 
 
 log.info("✅ Jarvis v3.1 imports OK. Model: %s", MODEL_NAME)
@@ -350,6 +351,115 @@ class SanctionsChecker:
 
 log.info("✅ SanctionsChecker defined (TTL: %sh via SANCTIONS_CACHE_TTL_HOURS).",
          os.getenv("SANCTIONS_CACHE_TTL_HOURS", "24"))
+
+
+# ─────────────────────────────────────────────────────────────────
+# M-1.1: PEPRegistryRefresher — scheduled EU PEP feed refresh
+#
+# Designed to run as a background job (APScheduler, 24h interval).
+# Failure modes are non-fatal: any 4xx/5xx or network error is logged
+# with EQ-3004 and the last-refreshed timestamp is left unchanged so
+# the stale cache continues serving rather than hard-failing.
+#
+# Timestamp persistence:
+#   Primary: Redis key 'jarvis:pep_last_refresh' (shared across workers)
+#   Fallback: local file '.pep_refresh_cache' (single-worker / dev)
+# ─────────────────────────────────────────────────────────────────
+
+class PEPRegistryRefresher:
+    """
+    Fetches the EU PEP registry feed and records the refresh timestamp.
+
+    The class does NOT manage an in-memory name list — that is left to
+    SanctionsChecker which already handles the EU Consolidated feed.
+    This class handles the *scheduled heartbeat*: it verifies the feed
+    is reachable, logs the timestamp, and lets the sanctions cache TTL
+    handle actual name-list expiry on the next check() call.
+
+    Production: wire PEP_FEED_URL to a dedicated PEP data vendor feed
+    (e.g. Refinitiv World-Check, Dow Jones RiskCenter) when available.
+    """
+
+    REDIS_KEY   = "jarvis:pep_last_refresh"
+    LOCAL_CACHE = Path(".pep_refresh_cache")
+    DEFAULT_URL = (
+        "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content"
+    )
+
+    def __init__(self):
+        self.feed_url = os.getenv("PEP_FEED_URL", self.DEFAULT_URL)
+        self._redis: Optional[object] = None
+
+        redis_url = os.getenv("REDIS_URL")
+        if redis_url:
+            try:
+                import redis as _redis_lib
+                client = _redis_lib.from_url(
+                    redis_url, socket_connect_timeout=2, decode_responses=True
+                )
+                client.ping()
+                self._redis = client
+                log.info("[PEPRegistryRefresher] Redis backend active for timestamp storage.")
+            except Exception as exc:
+                log.warning(
+                    "[PEPRegistryRefresher] Redis unavailable (%s) — using local file: %s",
+                    exc, self.LOCAL_CACHE,
+                )
+
+    def _store_timestamp(self, ts: str) -> None:
+        if self._redis is not None:
+            try:
+                self._redis.set(self.REDIS_KEY, ts)
+                return
+            except Exception as exc:
+                log.warning("[PEPRegistryRefresher] Redis write failed (%s) — writing local file.", exc)
+        self.LOCAL_CACHE.write_text(ts)
+
+    def get_last_refreshed(self) -> Optional[str]:
+        """Return ISO-8601 timestamp of last successful fetch, or None."""
+        if self._redis is not None:
+            try:
+                val = self._redis.get(self.REDIS_KEY)
+                if val:
+                    return val
+            except Exception:
+                pass
+        if self.LOCAL_CACHE.exists():
+            return self.LOCAL_CACHE.read_text().strip() or None
+        return None
+
+    def refresh(self) -> bool:
+        """
+        Fetch the PEP feed. Non-fatal — logs EQ-3004 on failure, never raises.
+        Returns True on success, False on any error.
+        """
+        log.info("[PEPRegistryRefresher] Refreshing EU PEP feed: %s", self.feed_url)
+        try:
+            resp = requests.get(self.feed_url, timeout=60)
+            if resp.status_code >= 400:
+                log.error(
+                    "[%s] PEP feed fetch failed: HTTP %d from %s — cache unchanged.",
+                    _EC.PEP_FEED_FAILURE, resp.status_code, self.feed_url,
+                )
+                return False
+
+            ts = datetime.now(timezone.utc).isoformat()
+            self._store_timestamp(ts)
+            log.info(
+                "[PEPRegistryRefresher] ✅ EU PEP feed OK (%d bytes). last_refreshed=%s",
+                len(resp.content), ts,
+            )
+            return True
+
+        except Exception as exc:
+            log.error(
+                "[%s] PEP feed network error: %s — last_refreshed unchanged.",
+                _EC.PEP_FEED_FAILURE, exc,
+            )
+            return False
+
+
+log.info("✅ PEPRegistryRefresher defined (feed: PEP_FEED_URL env var).")
 
 
 # ─────────────────────────────────────────────────────────────────
