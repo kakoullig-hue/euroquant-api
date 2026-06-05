@@ -159,7 +159,7 @@ assert os.getenv("ANTHROPIC_API_KEY"), (
 )
 
 # ── Constants ───────────────────────────────────
-MODEL_NAME      = "claude-sonnet-4-5"
+MODEL_NAME          = os.getenv("JARVIS_MODEL", "claude-sonnet-4-6")
 MIN_TEXT_LENGTH     = 150
 MAX_FILE_MB         = 50    # configurable via MAX_INGESTION_MB env var
 MIN_PRINTABLE_RATIO = 0.70  # Unicode L/N/P/Z ratio threshold
