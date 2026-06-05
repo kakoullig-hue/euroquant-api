@@ -395,6 +395,7 @@ async def analyze_pdf(
         # Build initial Jarvis state
         initial_state = {
             "pdf_path":              temp_path,
+            "api_key":               api_key,   # M-5.1: tenant isolation
             "raw_text":              "",
             "document_hash":         "",
             "used_ocr_fallback":     False,

@@ -167,6 +167,13 @@ MIN_PRINTABLE_RATIO = 0.70  # Unicode L/N/P/Z ratio threshold
 JARVIS_VERSION  = "jarvis-v3.1.0"
 
 
+def _tenant_id(api_key: Optional[str]) -> str:
+    """SHA-256 first 8 chars of the API key — subgraph partition key for tenant isolation."""
+    if not api_key:
+        return "default"
+    return hashlib.sha256(api_key.encode()).hexdigest()[:8]
+
+
 class _EC:
     """
     Structured error codes for enterprise support ticket correlation.
@@ -636,12 +643,15 @@ class Neo4jPersister:
     def setup_constraints(self):
         """Run ONCE on first deploy to create indexes."""
         stmts = [
-            "CREATE CONSTRAINT founder_id   IF NOT EXISTS FOR (f:Founder)         REQUIRE f.id  IS UNIQUE",
-            "CREATE CONSTRAINT company_key  IF NOT EXISTS FOR (c:Company)          REQUIRE c.key IS UNIQUE",
-            "CREATE CONSTRAINT polfig_key   IF NOT EXISTS FOR (p:PoliticalFigure)  REQUIRE p.key IS UNIQUE",
-            "CREATE INDEX founder_pep       IF NOT EXISTS FOR (f:Founder)         ON (f.pep_status)",
-            "CREATE INDEX founder_gi        IF NOT EXISTS FOR (f:Founder)         ON (f.governance_intensity)",
-            "CREATE INDEX company_country   IF NOT EXISTS FOR (c:Company)          ON (c.registration_country)",
+            # Composite range indexes for tenant-isolated lookups.
+            # Composite UNIQUE constraints require Neo4j Enterprise edition;
+            # use these range indexes for performance in Community edition.
+            "CREATE INDEX founder_tenant    IF NOT EXISTS FOR (f:Founder)        ON (f.id, f.tenant_id)",
+            "CREATE INDEX company_tenant    IF NOT EXISTS FOR (c:Company)         ON (c.key, c.tenant_id)",
+            "CREATE INDEX polfig_tenant     IF NOT EXISTS FOR (p:PoliticalFigure) ON (p.key, p.tenant_id)",
+            "CREATE INDEX founder_pep       IF NOT EXISTS FOR (f:Founder)        ON (f.pep_status)",
+            "CREATE INDEX founder_gi        IF NOT EXISTS FOR (f:Founder)        ON (f.governance_intensity)",
+            "CREATE INDEX company_country   IF NOT EXISTS FOR (c:Company)         ON (c.registration_country)",
         ]
         with self.driver.session() as session:
             for stmt in stmts:
@@ -654,9 +664,9 @@ class Neo4jPersister:
     # ── Write Transactions ──────────────────────────────
 
     @staticmethod
-    def _upsert_founder(tx, p: FounderRiskProfile, r: RiskExtractionResult):
+    def _upsert_founder(tx, p: FounderRiskProfile, r: RiskExtractionResult, tenant_id: str):
         tx.run("""
-            MERGE (f:Founder {id: $id})
+            MERGE (f:Founder {id: $id, tenant_id: $tenant_id})
             SET f.full_name            = $full_name,
                 f.nationality          = $nationality,
                 f.pep_status           = $pep_status,
@@ -666,9 +676,10 @@ class Neo4jPersister:
                 f.document_hash        = $doc_hash,
                 f.processed_at         = $ts,
                 f.extractor_version    = $version,
-                f.risk_flags           = $flags
+                f.risk_flags           = $flags,
+                f.tenant_id            = $tenant_id
         """,
-            id=p.founder_id, full_name=p.full_name,
+            id=p.founder_id, tenant_id=tenant_id, full_name=p.full_name,
             nationality=p.nationality or "UNKNOWN",
             pep_status=p.pep_status.value,
             sanctions_hit=p.sanctions_hit,
@@ -678,9 +689,9 @@ class Neo4jPersister:
         )
 
     @staticmethod
-    def _upsert_company(tx, founder_id: str, c: CompanyRiskProfile):
+    def _upsert_company(tx, founder_id: str, c: CompanyRiskProfile, tenant_id: str):
         tx.run("""
-            MERGE (co:Company {key: $key})
+            MERGE (co:Company {key: $key, tenant_id: $tenant_id})
             SET co.name                     = $name,
                 co.registration_country     = $country,
                 co.is_offshore_flag         = $offshore,
@@ -689,14 +700,16 @@ class Neo4jPersister:
                 co.incorporation_date       = $inc_date,
                 co.procurement_exposure     = $procurement,
                 co.procurement_value_eur    = $proc_val,
-                co.defense_gov_tech_sector  = $defense
+                co.defense_gov_tech_sector  = $defense,
+                co.tenant_id                = $tenant_id
             WITH co
-            MATCH (f:Founder {id: $founder_id})
+            MATCH (f:Founder {id: $founder_id, tenant_id: $tenant_id})
             MERGE (f)-[r:CONTROLS_STAKE]->(co)
             SET r.share_percentage = $share,
                 r.updated_at       = timestamp()
         """,
             key=f"{c.company_name}|{c.registration_country}",
+            tenant_id=tenant_id,
             name=c.company_name, country=c.registration_country,
             offshore=c.is_offshore_flag, fatf=c.fatf_risk_level.value,
             active=c.active_status, inc_date=c.incorporation_date or "",
@@ -707,21 +720,23 @@ class Neo4jPersister:
         )
 
     @staticmethod
-    def _upsert_political(tx, founder_id: str, pc: PoliticalConnection):
+    def _upsert_political(tx, founder_id: str, pc: PoliticalConnection, tenant_id: str):
         tx.run("""
-            MERGE (p:PoliticalFigure {key: $key})
+            MERGE (p:PoliticalFigure {key: $key, tenant_id: $tenant_id})
             SET p.name         = $name,
                 p.jurisdiction = $jurisdiction,
                 p.role_title   = $role,
                 p.is_pep       = $is_pep,
-                p.still_active = $active
+                p.still_active = $active,
+                p.tenant_id    = $tenant_id
             WITH p
-            MATCH (f:Founder {id: $founder_id})
+            MATCH (f:Founder {id: $founder_id, tenant_id: $tenant_id})
             MERGE (f)-[r:POLITICALLY_CONNECTED {rel_type: $rel_type}]->(p)
             SET r.pathway_distance = $distance,
                 r.updated_at       = timestamp()
         """,
             key=f"{pc.person_name}|{pc.jurisdiction}",
+            tenant_id=tenant_id,
             name=pc.person_name, jurisdiction=pc.jurisdiction,
             role=pc.role_title, is_pep=pc.is_pep_direct,
             active=pc.still_active, founder_id=founder_id,
@@ -729,18 +744,18 @@ class Neo4jPersister:
             distance=pc.pathway_distance,
         )
 
-    def persist(self, result: RiskExtractionResult) -> bool:
-        """Write full profile graph. Returns True on success."""
+    def persist(self, result: RiskExtractionResult, tenant_id: str = "default") -> bool:
+        """Write full profile graph scoped to tenant_id. Returns True on success."""
         p = result.profile
         try:
             with self.driver.session() as session:
-                session.execute_write(self._upsert_founder,  p, result)
+                session.execute_write(self._upsert_founder,  p, result, tenant_id)
                 for c  in p.associated_companies:
-                    session.execute_write(self._upsert_company,   p.founder_id, c)
+                    session.execute_write(self._upsert_company,   p.founder_id, c, tenant_id)
                 for pc in p.political_connections:
-                    session.execute_write(self._upsert_political, p.founder_id, pc)
-            log.info("[Neo4j] ✅ Persisted: %s (%d co, %d connections)",
-                     p.full_name, len(p.associated_companies), len(p.political_connections))
+                    session.execute_write(self._upsert_political, p.founder_id, pc, tenant_id)
+            log.info("[Neo4j] ✅ Persisted: %s (%d co, %d connections) [tenant=%s]",
+                     p.full_name, len(p.associated_companies), len(p.political_connections), tenant_id)
             return True
         except Exception as e:
             log.error("[Neo4j] Persist failed: %s", e)
@@ -748,18 +763,17 @@ class Neo4jPersister:
 
     # ── Read / Analytics Queries ────────────────────────
 
-    def pathway_network(self, founder_id: str, max_hops: int = 2) -> List[dict]:
+    def pathway_network(self, founder_id: str, tenant_id: str, max_hops: int = 2) -> List[dict]:
         """
-        Variable-length path traversal — core Neo4j value prop.
-        Finds all political figures within max_hops from founder.
+        Variable-length path traversal scoped to tenant_id.
         Σε PostgreSQL αυτό θα απαιτούσε recursive CTE. Εδώ: 1 γραμμή Cypher.
         """
         with self.driver.session() as session:
             result = session.run(
                 f"""
-                MATCH path = (f:Founder {{id: $id}})
+                MATCH path = (f:Founder {{id: $id, tenant_id: $tenant_id}})
                              -[:POLITICALLY_CONNECTED*1..{max_hops}]->
-                             (p:PoliticalFigure)
+                             (p:PoliticalFigure {{tenant_id: $tenant_id}})
                 RETURN p.name        AS name,
                        p.role_title  AS role,
                        p.jurisdiction AS jurisdiction,
@@ -768,19 +782,21 @@ class Neo4jPersister:
                 ORDER BY distance ASC
                 """,
                 id=founder_id,
+                tenant_id=tenant_id,
             )
             return [dict(r) for r in result]
 
-    def shared_connections(self, min_gi: float = 70.0) -> List[dict]:
+    def shared_connections(self, tenant_id: str, min_gi: float = 70.0) -> List[dict]:
         """
-        Cross-portfolio insight: Ποιοι high-risk founders μοιράζονται
-        κοινές πολιτικές διασυνδέσεις;
-        Enterprise use case — αδύνατο αποδοτικά σε relational DB.
+        Cross-portfolio insight scoped to tenant_id: which high-risk founders
+        share common political connections? Enterprise use case — impossible
+        efficiently in a relational DB.
         """
         with self.driver.session() as session:
             result = session.run("""
-                MATCH (f1:Founder)-[:POLITICALLY_CONNECTED]->(p:PoliticalFigure)
-                      <-[:POLITICALLY_CONNECTED]-(f2:Founder)
+                MATCH (f1:Founder {tenant_id: $tenant_id})-[:POLITICALLY_CONNECTED]->
+                      (p:PoliticalFigure {tenant_id: $tenant_id})
+                      <-[:POLITICALLY_CONNECTED]-(f2:Founder {tenant_id: $tenant_id})
                 WHERE f1.governance_intensity >= $threshold
                   AND f2.governance_intensity >= $threshold
                   AND id(f1) < id(f2)
@@ -790,7 +806,7 @@ class Neo4jPersister:
                        p.role_title AS shared_role,
                        p.is_pep     AS is_pep
                 ORDER BY f1.full_name
-            """, threshold=min_gi)
+            """, tenant_id=tenant_id, threshold=min_gi)
             return [dict(r) for r in result]
 
 log.info("✅ Neo4jPersister defined.")
@@ -842,9 +858,10 @@ class BenchmarkEngine:
     def __init__(self, neo4j_driver):
         self.driver = neo4j_driver
 
-    def _fetch_all_gi_scores(self, exclude_founder_id: str) -> list[float]:
+    def _fetch_all_gi_scores(self, exclude_founder_id: str, tenant_id: str = "default") -> list[float]:
         """
-        Pull governance_intensity scores for percentile calculation.
+        Pull governance_intensity scores for percentile calculation, scoped to tenant_id
+        so Tenant A's distribution cannot bleed into Tenant B's benchmark.
 
         FIX-8 (CRITICAL): Previous query had `WHERE f.id <>` with no parameter
         reference — a copy-paste error that caused a Cypher syntax error at
@@ -864,12 +881,14 @@ class BenchmarkEngine:
                     """
                     MATCH (f:Founder)
                     WHERE f.id <> $exclude_id
+                      AND f.tenant_id = $tenant_id
                       AND f.governance_intensity IS NOT NULL
                     RETURN f.governance_intensity AS gi
                     ORDER BY gi ASC
                     LIMIT 10000
                     """,
                     exclude_id=exclude_founder_id,
+                    tenant_id=tenant_id,
                 )
                 return [float(r["gi"]) for r in result]
         except Exception as e:
@@ -908,12 +927,12 @@ class BenchmarkEngine:
                 return round(pct, 1)
         return 50.0
 
-    def calculate(self, founder_id: str, governance_intensity: float) -> dict:
+    def calculate(self, founder_id: str, governance_intensity: float, tenant_id: str = "default") -> dict:
         """
         Main entry point. Returns dict with:
           percentile, cohort_size, source, delta_vs_claude
         """
-        scores = self._fetch_all_gi_scores(exclude_founder_id=founder_id)
+        scores = self._fetch_all_gi_scores(exclude_founder_id=founder_id, tenant_id=tenant_id)
         cohort_size = len(scores)
 
         if cohort_size >= self.MIN_COHORT_SIZE:
@@ -947,6 +966,7 @@ log.info("✅ BenchmarkEngine defined (FATF/EBA calibration loaded, min_cohort=%
 class JarvisState(TypedDict):
     # Input
     pdf_path:          str
+    api_key:           Optional[str]   # M-5.1: tenant isolation — derived from request X-API-Key
 
     # Ingestion output
     raw_text:          str
@@ -1540,13 +1560,14 @@ def reference_check_node(state: JarvisState) -> dict:
 
 def neo4j_persist_node(state: JarvisState) -> dict:
     """
-    Persists enriched profile to Neo4j graph database.
+    Persists enriched profile to Neo4j graph database, scoped to tenant subgraph.
     NON-BLOCKING: missing credentials or connection errors don't fail pipeline.
     """
     log.info("[Agent 4 — Neo4j] Persisting to graph database...")
-    uri      = os.getenv("NEO4J_URI",      "bolt://localhost:7687")
-    user     = os.getenv("NEO4J_USER",     "neo4j")
-    password = os.getenv("NEO4J_PASSWORD", "")
+    uri       = os.getenv("NEO4J_URI",      "bolt://localhost:7687")
+    user      = os.getenv("NEO4J_USER",     "neo4j")
+    password  = os.getenv("NEO4J_PASSWORD", "")
+    tenant_id = _tenant_id(state.get("api_key"))
 
     if not password:
         log.warning("[Agent 4 — Neo4j] NEO4J_PASSWORD not set in .env — skipping.")
@@ -1557,11 +1578,11 @@ def neo4j_persist_node(state: JarvisState) -> dict:
         if not persister.health_check():
             raise ConnectionError("Neo4j unreachable — check Docker/Desktop")
 
-        success = persister.persist(state["result"])
+        success = persister.persist(state["result"], tenant_id)
 
         if success:
             founder_id = state["result"].profile.founder_id
-            pathway    = persister.pathway_network(founder_id, max_hops=2)
+            pathway    = persister.pathway_network(founder_id, tenant_id, max_hops=2)
             if pathway:
                 log.info("[Agent 4 — Neo4j] 🕸️  Pathway network (%d figures within 2 hops):",
                          len(pathway))
@@ -1606,9 +1627,10 @@ log.info("✅ All 5 agent nodes defined. Ingestion: v3.1 (FIX-1,2,3,4 applied)")
 def benchmark_node(state: JarvisState) -> dict:
     log.info("[Agent 5 — Benchmark] Calculating data-driven market_percentile...")
 
-    uri      = os.getenv("NEO4J_URI",      "bolt://localhost:7687")
-    user     = os.getenv("NEO4J_USER",     "neo4j")
-    password = os.getenv("NEO4J_PASSWORD", "")
+    uri       = os.getenv("NEO4J_URI",      "bolt://localhost:7687")
+    user      = os.getenv("NEO4J_USER",     "neo4j")
+    password  = os.getenv("NEO4J_PASSWORD", "")
+    tenant_id = _tenant_id(state.get("api_key"))
 
     result  = state["result"]
     profile = result.profile
@@ -1629,7 +1651,7 @@ def benchmark_node(state: JarvisState) -> dict:
     try:
         driver = GraphDatabase.driver(uri, auth=(user, password))
         engine = BenchmarkEngine(driver)
-        bench  = engine.calculate(profile.founder_id, profile.governance_intensity)
+        bench  = engine.calculate(profile.founder_id, profile.governance_intensity, tenant_id=tenant_id)
         driver.close()
 
         # Key architectural decision: we do NOT mutate governance_intensity
@@ -1768,6 +1790,7 @@ if __name__ == "__main__":
 
     initial_state = {
         "pdf_path":              pdf_path,
+        "api_key":               None,
         "raw_text":              "",
         "document_hash":         "",
         "used_ocr_fallback":     False,
