@@ -353,6 +353,61 @@ log.info("✅ SanctionsChecker defined (TTL: %sh via SANCTIONS_CACHE_TTL_HOURS).
 
 
 # ─────────────────────────────────────────────────────────────────
+# M-1.2: TokenBucket — rate limiter for OpenCorporates API
+# Prevents the ThreadPoolExecutor from slamming the API and hitting
+# 429s, which would silently return None for every company check.
+# Default: 10 req/s, burst 5. Tune via OPENCORP_RATE_LIMIT=rate:burst.
+# ─────────────────────────────────────────────────────────────────
+
+class TokenBucket:
+    """
+    Thread-safe token bucket rate limiter.
+    rate:  tokens (requests) refilled per second
+    burst: bucket capacity — allows short bursts above steady-state rate
+    """
+
+    def __init__(self, rate: float, burst: int):
+        self.rate     = rate
+        self.burst    = burst
+        self._tokens  = float(burst)
+        self._updated = time.monotonic()
+        self._lock    = threading.Lock()
+
+    def acquire(self) -> None:
+        """Block until a token is available, then consume one."""
+        while True:
+            with self._lock:
+                now           = time.monotonic()
+                self._tokens  = min(
+                    self.burst,
+                    self._tokens + (now - self._updated) * self.rate,
+                )
+                self._updated = now
+                if self._tokens >= 1.0:
+                    self._tokens -= 1.0
+                    return
+            time.sleep(1.0 / self.rate)
+
+
+def _parse_opencorp_rate() -> tuple[float, int]:
+    """Parse OPENCORP_RATE_LIMIT='rate:burst' env var, e.g. '10:5'."""
+    raw   = os.getenv("OPENCORP_RATE_LIMIT", "10:5")
+    parts = raw.split(":")
+    try:
+        rate  = float(parts[0])
+        burst = int(parts[1]) if len(parts) > 1 else 5
+    except (ValueError, IndexError):
+        log.warning("[TokenBucket] Invalid OPENCORP_RATE_LIMIT=%r, using defaults 10:5", raw)
+        rate, burst = 10.0, 5
+    return rate, burst
+
+
+_oc_rate, _oc_burst = _parse_opencorp_rate()
+_opencorp_bucket    = TokenBucket(_oc_rate, _oc_burst)
+log.info("✅ TokenBucket ready for OpenCorporates (rate=%.1f/s, burst=%d).", _oc_rate, _oc_burst)
+
+
+# ─────────────────────────────────────────────────────────────────
 # Cell 3: CompanyChecker — OpenCorporates API
 # ─────────────────────────────────────────────────────────────────
 
@@ -380,6 +435,7 @@ class CompanyChecker:
 
     def search(self, company_name: str, country_code: str) -> Optional[dict]:
         """Search for company. Returns best match or None."""
+        _opencorp_bucket.acquire()
         params: dict = {
             "q":                 company_name,
             "jurisdiction_code": country_code.lower(),
