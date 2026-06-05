@@ -37,6 +37,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+import bcrypt
+
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -63,10 +65,29 @@ log = logging.getLogger("euroquant.api")
 # ── Configuration ─────────────────────────────────────────────────────
 MAX_UPLOAD_MB    = int(os.getenv("MAX_INGESTION_MB", "50"))
 ALLOWED_ORIGINS  = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
-API_KEYS_RAW     = os.getenv("EUROQUANT_API_KEYS", "")  # comma-separated
-VALID_API_KEYS   = {k.strip() for k in API_KEYS_RAW.split(",") if k.strip()}
+# M-0.3: keys are stored as bcrypt hashes — never plaintext.
+# Generate hashes with: python scripts/hash_key.py <your-key>
+API_KEYS_RAW     = os.getenv("EUROQUANT_API_KEYS", "")
+HASHED_API_KEYS  = [k.strip() for k in API_KEYS_RAW.split(",") if k.strip()]
 JARVIS_VERSION   = "jarvis-v3.1.0"
 API_VERSION      = "1.0.0"
+
+
+def _check_api_key(plaintext: str) -> bool:
+    """
+    Verify a plaintext key against all stored bcrypt hashes.
+
+    Iterates all stored hashes (O(n × bcrypt_cost)). For B2B deployments
+    with <10 keys this adds ~100–300ms per check — acceptable. If key
+    count grows, add an LRU cache keyed on HMAC(key) to amortize the cost.
+    """
+    for stored_hash in HASHED_API_KEYS:
+        try:
+            if bcrypt.checkpw(plaintext.encode(), stored_hash.encode()):
+                return True
+        except Exception:
+            continue
+    return False
 
 
 class _EC:
@@ -96,15 +117,17 @@ class _EC:
 _PDF_CACHE: dict[str, bytes] = {}
 
 # ── Sanity check on startup ───────────────────────────────────────────
-if not VALID_API_KEYS:
+if not HASHED_API_KEYS:
     log.warning(
         "⚠️  No EUROQUANT_API_KEYS set in env. API will REJECT all requests. "
-        "Set comma-separated keys in production. Dev key created for local use only."
+        "Set bcrypt-hashed keys (see scripts/hash_key.py). Dev key created for local use only."
     )
-    # Single dev-only key — printed once at startup for local testing
+    # Single dev-only key — hashed at startup, printed once for local testing
     DEV_KEY = "dev-" + uuid.uuid4().hex[:16]
-    VALID_API_KEYS.add(DEV_KEY)
+    HASHED_API_KEYS.append(bcrypt.hashpw(DEV_KEY.encode(), bcrypt.gensalt()).decode())
     log.warning("🔑 DEV-ONLY API key: %s", DEV_KEY)
+else:
+    log.info("✅ %d hashed API key(s) loaded.", len(HASHED_API_KEYS))
 
 # ── Jarvis import (lazy — fail fast if backend unavailable) ───────────
 try:
@@ -159,7 +182,7 @@ async def verify_api_key(x_api_key: Optional[str] = Header(None)) -> str:
             status_code=401,
             detail=f"[{_EC.MISSING_API_KEY}] Missing X-API-Key header",
         )
-    if x_api_key not in VALID_API_KEYS:
+    if not _check_api_key(x_api_key):
         log.warning("Invalid API key attempted: %s...", x_api_key[:8])
         raise HTTPException(
             status_code=403,

@@ -25,3 +25,6 @@ reportlab==4.2.5
 
 # ── M-0.2: shared circuit-breaker state across uvicorn workers ────
 redis>=5.0.0
+
+# ── M-0.3: hash API keys at rest ──────────────────────────────────
+bcrypt>=4.0.0
