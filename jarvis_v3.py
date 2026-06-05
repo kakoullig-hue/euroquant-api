@@ -125,6 +125,7 @@ print("✅ EuroQuant Schemas v2 + Reference Models loaded.")
 import os
 import json
 import hashlib
+import threading
 import unicodedata
 import time
 import logging
@@ -1098,8 +1099,106 @@ class _CircuitBreaker:
             return True
         return False
 
+class RedisCircuitBreaker:
+    """
+    Circuit breaker backed by Redis so all uvicorn workers share state.
+    Stores {failures, opened_at, state} as JSON in key 'jarvis:circuit_breaker'.
+
+    Falls back silently to an in-process _CircuitBreaker when:
+      • REDIS_URL is not set (single-worker / dev)
+      • Redis is unreachable at startup or mid-flight
+
+    Public interface is identical to _CircuitBreaker so callers need no changes.
+    """
+    FAILURE_THRESHOLD = 3
+    RECOVERY_TIMEOUT  = 60   # seconds before HALF-OPEN probe
+    REDIS_KEY         = "jarvis:circuit_breaker"
+
+    def __init__(self):
+        self._fallback  = _CircuitBreaker()  # in-process state when Redis unavailable
+        self._redis     = None
+
+        redis_url = os.getenv("REDIS_URL")
+        if not redis_url:
+            log.info("[CircuitBreaker] REDIS_URL not set — using in-process state (single-worker mode).")
+            return
+
+        try:
+            import redis as _redis_lib
+            client = _redis_lib.from_url(redis_url, socket_connect_timeout=2, decode_responses=True)
+            client.ping()
+            self._redis = client
+            log.info("[CircuitBreaker] Redis backend active: %s", redis_url)
+        except Exception as e:
+            log.warning(
+                "[CircuitBreaker] Redis unavailable (%s) — falling back to in-process. "
+                "Multi-worker deployments will NOT share circuit state until Redis is reachable.", e,
+            )
+
+    # ── Internal helpers ───────────────────────────────────────────
+
+    def _read(self) -> dict:
+        if self._redis is not None:
+            try:
+                raw = self._redis.get(self.REDIS_KEY)
+                if raw:
+                    return json.loads(raw)
+                return {"failures": 0, "opened_at": None, "state": "CLOSED"}
+            except Exception as e:
+                log.warning("[CircuitBreaker] Redis read error — disabling Redis, using in-process: %s", e)
+                self._redis = None
+        return {
+            "failures":  self._fallback.failures,
+            "opened_at": self._fallback.opened_at,
+            "state":     self._fallback.state,
+        }
+
+    def _write(self, failures: int, opened_at: Optional[float], state: str) -> None:
+        if self._redis is not None:
+            try:
+                payload = json.dumps({"failures": failures, "opened_at": opened_at, "state": state})
+                # TTL = 10× recovery window so stale state auto-expires if a worker dies
+                self._redis.set(self.REDIS_KEY, payload, ex=self.RECOVERY_TIMEOUT * 10)
+                return
+            except Exception as e:
+                log.warning("[CircuitBreaker] Redis write error — disabling Redis, using in-process: %s", e)
+                self._redis = None
+        self._fallback.failures  = failures
+        self._fallback.opened_at = opened_at
+        self._fallback.state     = state
+
+    # ── Public interface ───────────────────────────────────────────
+
+    def record_success(self) -> None:
+        self._write(0, None, "CLOSED")
+
+    def record_failure(self) -> None:
+        s        = self._read()
+        failures = s["failures"] + 1
+        if failures >= self.FAILURE_THRESHOLD:
+            self._write(failures, time.time(), "OPEN")
+            log.error(
+                "[CircuitBreaker] 🔴 OPEN — %d consecutive failures. "
+                "Fast-failing for %ds. Check Anthropic API status.",
+                failures, self.RECOVERY_TIMEOUT,
+            )
+        else:
+            self._write(failures, s["opened_at"], s["state"])
+
+    def is_open(self) -> bool:
+        s = self._read()
+        if s["state"] == "OPEN":
+            if s["opened_at"] and time.time() - s["opened_at"] > self.RECOVERY_TIMEOUT:
+                log.warning("[CircuitBreaker] 🟡 HALF-OPEN — attempting recovery...")
+                self._write(s["failures"], s["opened_at"], "HALF-OPEN")
+                return False
+            return True
+        return False
+
+
 # Module-level singleton — persists across LangGraph node invocations
-_extraction_circuit_breaker = _CircuitBreaker()
+# RedisCircuitBreaker auto-detects REDIS_URL and falls back to _CircuitBreaker
+_extraction_circuit_breaker = RedisCircuitBreaker()
 
 _RETRY_DELAYS    = [1, 2, 4]   # seconds between attempts
 _RETRY_RATE_DELAY = 10          # longer wait on 429 rate limit
