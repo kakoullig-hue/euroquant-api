@@ -27,3 +27,13 @@ services:
         value: "*"
       - key: MAX_INGESTION_MB
         value: "50"
+
+  - type: web
+    name: euroquant-demo
+    runtime: static
+    buildCommand: echo "static"
+    staticPublishPath: /
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache

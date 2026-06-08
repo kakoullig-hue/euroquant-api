@@ -395,4 +395,12 @@ window.addEventListener('DOMContentLoaded',()=>{
   }));
 });
 </script>
+<script>
+// Keep-alive: ping API every 14 min so Render free tier stays warm
+(function keepAlive() {
+  fetch("https://euroquant-api.onrender.com/api/health", { mode: "no-cors" })
+    .catch(function(){});
+  setTimeout(keepAlive, 840000);
+})();
+</script>
 </body></html>
