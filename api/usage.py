@@ -1,113 +1,120 @@
 """
-M-5.2: Usage metering — per-tenant call tracking for billing.
+═══════════════════════════════════════════════════════════════════════
+EuroQuant Risk Terminal — Usage Metering (usage.py)
+───────────────────────────────────────────────────────────────────────
+Per-tenant usage counters for the FastAPI gateway.
 
-Primary store: Redis hash  'jarvis:usage:{tenant_id}'  (shared across workers)
-Fallback:      in-memory dict  (single-worker / dev, lost on restart)
+Design:
+  • tenant_id = first 8 hex chars of SHA-256(api_key) — stable, non-reversible.
+  • UsageMeter records (call_count, total_ms, last_call) per tenant.
+  • Backed by Redis when REDIS_URL is set; falls back to an in-process
+    dict otherwise (fine for single-worker free-tier deployments).
 
-tenant_id is the SHA-256 first 8 chars of the caller's API key — same
-derivation as jarvis_v3._tenant_id so Neo4j subgraph and usage records
-are correlated by the same partition key.
+This module was reconstructed to match the interface main.py expects:
+    from usage import UsageMeter, tenant_id_from_key
+    meter = UsageMeter(redis_url=os.getenv("REDIS_URL"))
+    meter.record(tenant_id, elapsed_ms)
+    stats = meter.get(tenant_id)   # -> dict
+═══════════════════════════════════════════════════════════════════════
 """
+
+from __future__ import annotations
 
 import hashlib
 import logging
+import threading
 import time
 from typing import Optional
 
 log = logging.getLogger("euroquant.usage")
 
-REDIS_KEY_PREFIX = "jarvis:usage:"
-
 
 def tenant_id_from_key(api_key: str) -> str:
-    """SHA-256 first 8 chars of the API key — must match jarvis_v3._tenant_id."""
-    return hashlib.sha256(api_key.encode()).hexdigest()[:8]
+    """Stable, non-reversible tenant id derived from the API key."""
+    if not api_key:
+        return "anonymous"
+    return hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:8]
 
 
 class UsageMeter:
     """
-    Per-tenant usage counter.
+    Records per-tenant usage. Uses Redis if a URL is provided and the
+    redis package is importable; otherwise uses an in-process dict.
 
-    Writes to a Redis hash keyed by 'jarvis:usage:{tenant_id}':
-      total_calls        — lifetime /analyze calls
-      total_elapsed_ms   — cumulative processing time
-      documents_analyzed — always equals total_calls on success path
-      last_call_at       — ISO-8601 UTC timestamp of last record() call
-
-    Falls back to an in-memory dict when Redis is unavailable.
-    In-memory state is lost on process restart; acceptable for dev.
+    Stored fields per tenant:
+        calls       : int   total /analyze calls
+        total_ms    : int   cumulative processing time
+        avg_ms      : float calls>0 ? total_ms/calls : 0
+        last_call   : float unix timestamp of most recent call
     """
 
     def __init__(self, redis_url: Optional[str] = None):
         self._redis = None
+        self._lock = threading.Lock()
         self._mem: dict[str, dict] = {}
 
         if redis_url:
             try:
-                import redis as _redis_lib
-                client = _redis_lib.from_url(
-                    redis_url, socket_connect_timeout=2, decode_responses=True
+                import redis  # type: ignore
+                self._redis = redis.from_url(redis_url, decode_responses=True)
+                self._redis.ping()
+                log.info("[UsageMeter] ✅ Redis backend active.")
+            except Exception as e:
+                log.warning(
+                    "[UsageMeter] Redis unavailable (%s) — falling back to in-memory.", e
                 )
-                client.ping()
-                self._redis = client
-                log.info("[UsageMeter] Redis backend active.")
-            except Exception as exc:
-                log.warning("[UsageMeter] Redis unavailable (%s) — using in-memory fallback.", exc)
-
-    def _redis_key(self, tenant_id: str) -> str:
-        return f"{REDIS_KEY_PREFIX}{tenant_id}"
-
-    def record(self, tenant_id: str, elapsed_ms: int) -> None:
-        """Increment usage counters for tenant_id after a successful /analyze call."""
-        now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-
-        if self._redis is not None:
-            try:
-                key  = self._redis_key(tenant_id)
-                pipe = self._redis.pipeline()
-                pipe.hincrby(key, "total_calls", 1)
-                pipe.hincrbyfloat(key, "total_elapsed_ms", elapsed_ms)
-                pipe.hincrby(key, "documents_analyzed", 1)
-                pipe.hset(key, "last_call_at", now_iso)
-                pipe.execute()
-                log.info("[UsageMeter] Recorded %dms for tenant=%s", elapsed_ms, tenant_id)
-                return
-            except Exception as exc:
-                log.warning("[UsageMeter] Redis write failed (%s) — writing in-memory.", exc)
                 self._redis = None
+        else:
+            log.info("[UsageMeter] No REDIS_URL — using in-memory backend.")
 
-        bucket = self._mem.setdefault(tenant_id, {
-            "total_calls":       0,
-            "total_elapsed_ms":  0,
-            "documents_analyzed": 0,
-            "last_call_at":      None,
-        })
-        bucket["total_calls"]        += 1
-        bucket["total_elapsed_ms"]   += elapsed_ms
-        bucket["documents_analyzed"] += 1
-        bucket["last_call_at"]        = now_iso
+    # ── Public API ────────────────────────────────────────────────────
+    def record(self, tenant_id: str, elapsed_ms: int) -> None:
+        """Record one billable call for a tenant."""
+        try:
+            if self._redis is not None:
+                key = f"eq:usage:{tenant_id}"
+                pipe = self._redis.pipeline()
+                pipe.hincrby(key, "calls", 1)
+                pipe.hincrby(key, "total_ms", int(elapsed_ms))
+                pipe.hset(key, "last_call", time.time())
+                pipe.execute()
+            else:
+                with self._lock:
+                    rec = self._mem.setdefault(
+                        tenant_id, {"calls": 0, "total_ms": 0, "last_call": 0.0}
+                    )
+                    rec["calls"] += 1
+                    rec["total_ms"] += int(elapsed_ms)
+                    rec["last_call"] = time.time()
+        except Exception as e:
+            # Metering must never break the request path.
+            log.error("[UsageMeter] record failed (non-fatal): %s", e)
 
     def get(self, tenant_id: str) -> dict:
-        """Return usage stats for tenant_id. Never raises — returns zeroed dict if unknown."""
-        if self._redis is not None:
-            try:
-                raw = self._redis.hgetall(self._redis_key(tenant_id))
-                if raw:
-                    return {
-                        "tenant_id":          tenant_id,
-                        "total_calls":        int(raw.get("total_calls", 0)),
-                        "total_elapsed_ms":   int(float(raw.get("total_elapsed_ms", 0))),
-                        "documents_analyzed": int(raw.get("documents_analyzed", 0)),
-                        "last_call_at":       raw.get("last_call_at"),
-                    }
-            except Exception as exc:
-                log.warning("[UsageMeter] Redis read failed: %s", exc)
+        """Return usage stats for a tenant. Always returns a dict."""
+        try:
+            if self._redis is not None:
+                key = f"eq:usage:{tenant_id}"
+                raw = self._redis.hgetall(key) or {}
+                calls = int(raw.get("calls", 0))
+                total_ms = int(raw.get("total_ms", 0))
+                last_call = float(raw.get("last_call", 0.0))
+            else:
+                with self._lock:
+                    rec = self._mem.get(
+                        tenant_id, {"calls": 0, "total_ms": 0, "last_call": 0.0}
+                    )
+                    calls = int(rec["calls"])
+                    total_ms = int(rec["total_ms"])
+                    last_call = float(rec["last_call"])
+        except Exception as e:
+            log.error("[UsageMeter] get failed (non-fatal): %s", e)
+            calls, total_ms, last_call = 0, 0, 0.0
 
-        bucket = self._mem.get(tenant_id, {})
         return {
-            "tenant_id":          tenant_id,
-            "total_calls":        bucket.get("total_calls", 0),
-            "total_elapsed_ms":   int(bucket.get("total_elapsed_ms", 0)),
-            "documents_analyzed": bucket.get("documents_analyzed", 0),
-            "last_call_at":       bucket.get("last_call_at"),
+            "tenant_id": tenant_id,
+            "calls": calls,
+            "total_ms": total_ms,
+            "avg_ms": round(total_ms / calls, 1) if calls else 0.0,
+            "last_call": last_call,
         }

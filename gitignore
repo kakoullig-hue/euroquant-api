@@ -1,0 +1,31 @@
+# ── Secrets — NEVER commit these ──
+.env
+.env.local
+*.key
+*.pem
+secrets/
+.env.production
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.Python
+
+# ── OS / Editor ──
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ── Logs & temp ──
+*.log
+reports/*.pdf
+tmp/
+*.tmp
+
+# ── Keep the template ──
+!.env.example
