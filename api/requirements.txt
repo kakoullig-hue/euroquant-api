@@ -9,7 +9,7 @@ langgraph==0.2.39
 neo4j==5.25.0
 pdfplumber==0.11.4
 pypdf==5.0.1
-rapidfuzz==3.10.0
+rapidfuzz
 requests==2.32.3
 reportlab==4.2.2
 redis==5.1.1
