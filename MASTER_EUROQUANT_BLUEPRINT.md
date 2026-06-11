@@ -2,14 +2,14 @@
 **Ο μοναδικός, ζωντανός οδηγός context για το Project EuroQuant.**
 Ανέβασε αυτό το αρχείο στην αρχή κάθε νέου chat — ο Claude έχει πλήρες context χωρίς καμία επανεξήγηση.
 
-**Engine:** Jarvis MAS `v3.1.0` · **Blueprint version:** Synthesized v4.1 · **Last updated:** 9 June 2026
+**Engine:** Jarvis MAS `v3.1.0` · **Blueprint version:** v4.2 · **Last updated:** 11 June 2026
 **Πηγή αλήθειας:** Αυτό το αρχείο υπερισχύει όλων των προηγούμενων `master_context*.md`. Σε σύγκρουση οδηγιών, νικάει η πιο πρόσφατη.
 
 ---
 
 ## 01 · ΤΑΥΤΟΤΗΤΑ & ΡΟΛΟΙ
 
-**Ο χρήστης — Giorgos Kakoullis**
+**Ο χρήστης — George Kakoullis** *(George εξωτερικά παντού — LinkedIn, CV, domain email, Stripe, site. Giorgos μόνο εσωτερικά/άτυπα.)*
 Founder & Technical Co-founder της EuroQuant. **Entrepreneur, όχι developer ή analyst.** Παίρνει αποφάσεις και αναθέτει execution. Δεν κάνει χειροκίνητη step-by-step δουλειά — περιμένει έτοιμα, production-ready artifacts.
 **Hardware:** MacBook Pro M4 Pro · zsh · Anaconda Python 3.13.9 (base)
 
@@ -65,7 +65,7 @@ Claude Code = covered από Claude Pro (OAuth), ΞΕΧΩΡΙΣΤΟ από το 
 **ICP (Ideal Customer Profile):** VC Managing Partners και Due Diligence Analysts που αξιολογούν startups — **ΟΧΙ compliance teams, ΟΧΙ policymaker watchers.** Verticals: Dual-Use, DefenseTech, SpaceTech, GovTech. **Γεωγραφία:** CEE / Baltic ως entry market.
 
 **Business Model:**
-- *Pillar 1 — VC Core:* 1 free Deep-Dive Audit (proof-of-value, ~€490/report μετά) → Enterprise Tier (On-Demand DD + 24/7 Portfolio Macro-Monitoring με Neo4j alerts όταν αλλάζει pathway distance).
+- *Pillar 1 — VC Core:* Productized **Sample Governance Report at €490 introductory (live, public price — see §21)**. Free deep-dive pilots available as sales tool for design-partner conversations but no longer the default first touch → Enterprise Tier (On-Demand DD + 24/7 Portfolio Macro-Monitoring με Neo4j alerts όταν αλλάζει pathway distance).
 - *Pillar 2 — API-First Compliance:* standalone KYC/ESG endpoint για Hedge Funds & Compliance Firms (secondary revenue).
 
 **Competitive positioning:**
@@ -74,7 +74,7 @@ Claude Code = covered από Claude Pro (OAuth), ΞΕΧΩΡΙΣΤΟ από το 
 - *DD firms (manual):* εβδομάδες + €€€, δεν scale.
 - *EuroQuant moat:* digest private founding docs + graph indirect political connections (D-1/D-2/D-3) + benchmarked GI score + ephemeral processing. **Λευκός χώρος.**
 
-**Stage:** Pre-revenue, pre-design-partner. MVP built, demo-ready, **deployed LIVE 24/7 σε Render** (API + demo). Επόμενο: customer discovery (Φάση Γ).
+**Stage:** Live commercial surface (as of 11 June 2026). MVP built, demo-ready, **deployed LIVE 24/7**. Store live at `euroquant.io`, accepting real €490 payments. Customer discovery (Φάση Γ) in parallel — 3 LinkedIn notes sent, awaiting replies. See §21 for full commerce layer.
 
 ---
 
@@ -542,5 +542,69 @@ LOG_LEVEL=INFO
 
 ---
 
-*MASTER EUROQUANT BLUEPRINT · Synthesized v4.1 · Internal / Co-founder Only · 9 June 2026*
+## 21 · COMMERCE LAYER (live 11 June 2026)
+
+**End goal achieved:** "First-Customer System" — a live commercial surface on an owned domain that accepts real payment, with the demo attached as proof.
+
+**Topology:**
+| Surface | URL | Host | Status |
+|---|---|---|---|
+| Store (Sample Report) | `https://euroquant.io` | Netlify (static `index.html`) | LIVE |
+| Demo dashboard | `https://demo.euroquant.io` | Render (existing static site) | LIVE |
+| API / Jarvis engine | `…onrender.com` | Render | LIVE (frozen until validation) |
+| Payment | Stripe Payment Link (LIVE mode) | Stripe | LIVE — accepts real €490 |
+| Founder email | `george@euroquant.io` | Porkbun forwarding → Gmail | LIVE (send-from via Zoho: TODO) |
+
+**Domain:** `euroquant.io` registered at Porkbun, 1-year, **auto-renew ON**. DNS: A record → Netlify `75.2.60.5`; `www` CNAME → Netlify site; `demo` CNAME → Render target. `.com`/`.eu` unavailable (taken by unrelated entities — trademark/SEO awareness item, not an active conflict).
+
+**The Offer — Sample Governance Report:**
+- Fixed scope: one company · one report · 48h delivery · **€490 introductory**.
+- Two input modes: **Public** (named registered company, public-registry data) or **Private** (redacted/synthetic cap table, in-memory processing, DPA-lite terms shown on page).
+- Output: PDF — ownership structure, sanctions/PEP screening, governance-risk score, flagged pathways. Watermarked "ADVISORY — Sample Engagement". Analyst sign-off before delivery (preserves Article 22 / Schufa posture from §16).
+- Fulfillment: **manual** through the live API (~30 min/order). Full reference: `ASYNC_REVENUE_TRACK.md`.
+- **Automation gate:** Stripe webhook → API → auto-delivery is built **only at the 3rd paid order**. Until then, manual fulfillment. (No engineering before validation.)
+
+**Site source:** single-file `euroquant_sample_report.html` (deployed as `index.html`). Two setup constants at top: `STRIPE_PAYMENT_LINK` (LIVE) + `DEMO_URL`. Includes OG/Twitter meta, favicon, trust section (founder + SINN + G4), embedded DPA-lite summary. Brand-locked: navy `#001B52`, Space Grotesk / IBM Plex. **No stack names, no benchmark claims, no absolute guarantees on the page** (Brand Pack rules enforced).
+
+**Distribution asset:** `euroquant_linkedin_thumbnail.png` (1200×627) for LinkedIn Featured + future milestone post.
+
+---
+
+## 22 · DISTRIBUTION RULES (NEW)
+
+- **Channels:** personal LinkedIn Featured (link + thumbnail), company page About + website field, email signature.
+- **HARD GUARDRAIL — discovery/commerce separation:** the three contacted discovery targets (Matej Luhovy/Presto, Sandra Golbreich/BSV, Marcin Hejka/OTB) and any future "not selling anything" discovery contact **never receive the store link in outreach**. They were promised a research conversation; sending a price 5 days later burns both the call and credibility. If they find the offer themselves via the profile, that is legitimate (inbound ≠ outbound).
+- **16 Jun follow-up** to silent discovery targets = clean discovery message only, no product/price.
+- **Analytics:** privacy-first only (Cloudflare Web Analytics / GoatCounter) — **never** a cookie-consent tool like GA4 on a privacy-positioned product.
+- **Inbound scam awareness:** post-launch scrapers (fake "directory listings", domain-renewal invoices, SEO offers) will arrive. Only Porkbun and Stripe emails about the domain/payments are legitimate. Don't click claim/unsubscribe on opportunistic mail.
+
+---
+
+## 23 · OPS & SOURCE OF TRUTH (NEW)
+
+- **GitHub private repo `euroquant`** = canonical store going forward. Structure: `/api` (FastAPI + Jarvis), `/web` (dashboard + store HTML), `/docs` (all .md: Blueprint, packs, instructions), `/ops` (configs, SOPs).
+- **Claude Code** manages the repo and files directly. **Claude.ai Project Knowledge** stays lean (4–5 canonical files); sync rule: **the repo is edited first**, Project Knowledge mirrors only canonical docs.
+- **Obsidian (optional):** open the repo folder as a vault for reading/notes — same files, no duplication.
+- **Sync rule:** anything that changes architecture/schema/strategy → update this Blueprint in the repo, bump version, then mirror to Project Knowledge.
+
+---
+
+## OPEN TRACKS (status as of 11 Jun 2026)
+
+| Track | Status |
+|---|---|
+| Customer discovery (5 calls) | 3 LinkedIn notes sent (Matej, Sandra, M. Hejka); awaiting replies; 16 Jun follow-up queued |
+| Commerce / store | ✅ LIVE on euroquant.io, accepting real payment |
+| Stripe send-from email (Zoho) | TODO |
+| GitHub repo | ✅ Done (see §23) |
+| Analytics install | TODO (Cloudflare/GoatCounter) |
+| `og:image` wired to thumbnail | TODO (upload PNG to site, add meta) |
+| CV | Instructions ready (`CV_GENERATOR_INSTRUCTIONS.md`); generate after internships or on demand |
+| LinkedIn headline (Student → Founder) | Founder's call — deferred; flagged as now costing conversions |
+| Fulfillment automation | Gated to 3rd paid order |
+| Engineering freeze | Holds until discovery exit criteria met (`DISCOVERY_EXECUTION_PACK.md` §5) |
+
+---
+
+*MASTER EUROQUANT BLUEPRINT · v4.2 · Internal / Co-founder Only · 11 June 2026*
 *Ανανέωσε αυτό το αρχείο μετά από κάθε major session που αλλάζει architecture, schema, ή στρατηγική.*
