@@ -1,6 +1,6 @@
 # EuroQuant — Pilot Program & Data Processing Terms
 
-*Confidential · For Venture Capital Partners · Version 1.0*
+*Confidential · For Venture Capital Partners · Version 1.1*
 
 ---
 
@@ -27,6 +27,8 @@ EuroQuant automates regulatory and political due diligence for VC funds investin
 - **Ephemeral Processing** — your documents are analyzed in memory and destroyed immediately. Zero storage, zero data-leakage risk. (See Part 2.)
 - **Built for your vertical** — we specialize in the political and regulatory blind spots specific to dual-use and government-adjacent technology.
 - **Analyst sign-off** — every report is human-reviewed before issue, fully compliant with EU automated-decision rules.
+
+**See it live:** A sample analysis is available at **[euroquant-demo.onrender.com](https://euroquant-demo.onrender.com)** — a synthetic DefenseTech founder profile processed through the Jarvis engine, with full pathway mapping and risk scoring.
 
 **Next step:** Reply with one company name from your pipeline and we will begin. We will send the data-processing terms (Part 2) for your sign-off first.
 
