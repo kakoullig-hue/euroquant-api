@@ -154,6 +154,8 @@ else:
     log.info("✅ %d hashed API key(s) loaded.", len(HASHED_API_KEYS))
 
 # ── Jarvis import (lazy — fail fast if backend unavailable) ───────────
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # ensure api/ is on path
 try:
     # In production this imports the compiled Jarvis engine
     # For Jupyter-developed Jarvis, run nbconvert first:

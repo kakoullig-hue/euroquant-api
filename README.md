@@ -1,202 +1,94 @@
-# EuroQuant Risk Terminal — v4 Release
+# EuroQuant Risk Terminal
 
-**Status:** Production-hardened backend + REST API + branded PDF output + integrated dashboard
-**Engine:** Jarvis MAS v3.1.0 (FIX-1 → FIX-10 applied)
-**Date:** June 2026
+**B2B Enterprise SaaS · RegTech · Automated Regulatory Due Diligence for VC**
+Engine: Jarvis MAS v3.1.0 · Blueprint: v4.2 · June 2026
 
----
-
-## What shipped in this release
-
-### Mission 5 — FastAPI Gateway (`api/`)
-REST API wrapping the Jarvis engine.
-
-- `POST /api/v1/analyze` — upload PDF, get JSON `RiskExtractionResult`
-- `POST /api/v1/analyze/report` — upload PDF, get branded PDF report
-- `GET  /api/health` — liveness probe (no auth)
-- API key auth via `X-API-Key` header
-- In-process rate limiting (30 req/min/key — replace with Redis in prod)
-- Ephemeral file handling — temp file deleted in `finally` even on exception
-- Audit logging by request_id (no document content logged)
-- CORS configured for dashboard origins
-
-### Mission 6 — Dashboard Integration (`dashboard/`)
-Three-state React UI connecting to the FastAPI gateway.
-
-- **Upload screen** — drag-drop PDF, demo mode button, API health badge
-- **Processing screen** — branded loader with Jarvis pipeline stage progress
-- **Results screen** — full dashboard + PDF download button
-- `api_client.js` — typed fetch wrappers with specific error messaging
-- Demo mode still works when the API is offline (uses sample data)
-
-### Mission 7 — Branded PDF Report Generator (`reports/`)
-ReportLab-based PDF output mirroring the dashboard's brand identity.
-
-7 sections:
-1. **Cover** — subject ID, generated timestamp, verdict pill
-2. **Executive Summary** — GI gauge + key facts + Jarvis verdict
-3. **Risk Flags** — severity-coded card list
-4. **Associated Companies** — tabular view with FATF + procurement columns
-5. **Political Network** — D-1/D-2/D-3 pathway distance encoding
-6. **Reference Layer** — OFAC/EU/OpenCorporates verification summary
-7. **Analyst Verification** — **GDPR Article 22 compliance fix**
-8. **Audit Trail** — SHA-256, timestamps, ephemeral confirmation
+Live: [euroquant.io](https://euroquant.io) · API: euroquant-api.onrender.com · Demo: demo.euroquant.io
 
 ---
 
-## GDPR Article 22 fix — the compliance unlock
-
-Per the CJEU Schufa ruling (C-634/21), an automated risk score that
-influences third-party decisions violates Article 22 even with a
-disclaimer. The fix in v4: every PDF report now includes a mandatory
-**Analyst Verification** section that must be physically signed before
-the report is considered "issued." This transforms the GI score from
-"automated decision-making" into "automated input to human decision."
-
-Until signed, the report is explicitly **advisory only** and cannot be
-used as a basis for an investment decision. This satisfies Article 22
-while preserving the product's core value proposition.
-
----
-
-## Quick start
-
-### Local development (Docker)
-
-```bash
-cd deploy/
-cp ../api/.env.example ../api/.env
-# Edit ../api/.env with your ANTHROPIC_API_KEY and EUROQUANT_API_KEYS
-docker compose up -d
-
-# API on http://localhost:8000
-# Neo4j browser on http://localhost:7474
-# Docs on http://localhost:8000/api/docs
-```
-
-### Local development (no Docker)
-
-```bash
-# 1. Convert Jarvis notebook to importable module
-jupyter nbconvert --to script jarvis_v3.ipynb --output jarvis_v3
-
-# 2. Install dependencies
-pip install -r api/requirements.txt
-
-# 3. Set environment variables
-cp api/.env.example api/.env
-# edit api/.env
-
-# 4. Run the API
-uvicorn api.main:app --reload --port 8000
-
-# 5. In another terminal — run the dashboard
-cd dashboard/
-# (assuming Vite/Next setup — wire App.jsx as your root component)
-npm run dev
-```
-
-### Generate a PDF report via curl
-
-```bash
-curl -X POST http://localhost:8000/api/v1/analyze/report \
-  -H "X-API-Key: your-api-key-here" \
-  -F "file=@test_doc.pdf" \
-  -o report.pdf
-```
-
----
-
-## Architecture notes
-
-```
-                      ┌──────────────────┐
-                      │   Dashboard UI   │  React (Vite/Next)
-                      │   (Upload + UI)  │
-                      └────────┬─────────┘
-                               │ X-API-Key + multipart
-                               ▼
-                      ┌──────────────────┐
-                      │  FastAPI Gateway │  Mission 5
-                      │   ・auth          │
-                      │   ・rate limit    │
-                      │   ・ephemeral I/O │
-                      └────────┬─────────┘
-                               │
-                ┌──────────────┼──────────────┐
-                ▼              ▼              ▼
-        ┌─────────────┐ ┌──────────────┐ ┌──────────────┐
-        │ JSON output │ │  PDF output  │ │  Audit log   │
-        │ (analyze)   │ │   (report)   │ │  (request_id │
-        │             │ │   Mission 7  │ │   only)      │
-        └─────────────┘ └──────────────┘ └──────────────┘
-                               │
-                               ▼
-                      ┌──────────────────┐
-                      │  Jarvis Engine   │  v3.1.0 (FIX-1→10)
-                      │   ・ingest        │
-                      │   ・extract       │
-                      │   ・reference     │
-                      │   ・neo4j         │
-                      │   ・benchmark     │
-                      └──────────────────┘
-                               │
-                ┌──────────────┼──────────────┐
-                ▼              ▼              ▼
-          ┌─────────┐    ┌─────────┐    ┌──────────┐
-          │ Claude  │    │  Neo4j  │    │   OFAC   │
-          │   API   │    │ (graph) │    │ EU · OC  │
-          └─────────┘    └─────────┘    └──────────┘
-```
-
-### Why these choices
-
-| Decision | Rationale |
-|---|---|
-| FastAPI over Flask | Native async, OpenAPI auto-docs, Pydantic integration |
-| ReportLab over WeasyPrint | No browser dependency, smaller container, programmatic layout |
-| In-process rate limiting | Sufficient for single-instance; swap to Redis for multi-worker |
-| Ephemeral via `finally` | Guarantees delete even on exception — auditable |
-| Separate analyze + report endpoints | Allows JSON consumers (integrators) without forcing PDF gen |
-| Dashboard `data` prop with default | Preserves demo mode while supporting API integration |
-| Analyst sign-off as PDF section | Enforces GDPR compliance at the deliverable level, not just UI |
-
----
-
-## What's next (post-v4 roadmap)
-
-Once v4 hits first pilot:
-
-1. **Redis-backed rate limiting + circuit breaker** — multi-worker safe
-2. **Per-key usage tracking** — billing foundation
-3. **Webhook for sanctions emergency updates** — wire to OFAC RSS feed
-4. **PostgreSQL audit log** — request_id, key_id, founder_id, timestamp
-5. **Sentry/Datadog integration** — replace stub `error_report_node`
-6. **PDF watermarking** — "DRAFT — Pending Analyst Sign-off" until verified
-7. **Multi-language PDF** — currently English; add Greek and French
-8. **SDK** — Python + TypeScript clients for VC integrators
-
----
-
-## File inventory
+## Repository Structure
 
 ```
 euroquant_v4/
-├── api/
-│   ├── main.py              # FastAPI gateway (Mission 5)
+├── api/                          # FastAPI gateway + Jarvis engine
+│   ├── jarvis_v3.py              # Jarvis MAS (LangGraph pipeline, all nodes)
+│   ├── main.py                   # FastAPI gateway — auth, rate limiting, endpoints
+│   ├── pdf_generator.py          # Branded PDF report (ReportLab)
+│   ├── usage.py                  # Per-tenant usage metering
 │   ├── requirements.txt
-│   └── .env.example
-├── reports/
-│   └── pdf_generator.py     # Branded PDF generator (Mission 7)
-├── dashboard/
-│   ├── App.jsx              # Upload + Processing + Results shell (Mission 6)
-│   ├── EuroQuantDashboard.jsx  # Original dashboard, patched to accept `data` prop
-│   └── api_client.js        # Fetch wrappers with error handling
-└── deploy/
-    ├── Dockerfile
-    └── docker-compose.yml
+│   ├── .env.example              # Template — copy to .env, fill secrets, never commit
+│   └── .env                      # SECRETS — gitignored
+│
+├── web/                          # Frontend — dashboard JSX + store HTML + demo assets
+│   ├── App.jsx                   # Upload / Processing / Results shell
+│   ├── EuroQuantDashboard.jsx    # Risk report dashboard + NetworkGraph viz
+│   ├── api_client.js             # Typed fetch wrappers (dashboard ↔ API)
+│   ├── EuroQuant_Demo_Dashboard.html  # Self-contained demo (served at demo.euroquant.io)
+│   ├── index.html                # Store page (deployed to euroquant.io via Netlify)
+│   ├── demo_data_synthetic.json  # Canonical synthetic demo dataset (Kaspars Veidemanis)
+│   └── EuroQuant_DemoReport.pdf  # Cached demo PDF for instant download
+│
+├── docs/                         # All documentation and operational markdown files
+│   ├── MASTER_EUROQUANT_BLUEPRINT.md   # ← Primary context doc (upload to Claude.ai)
+│   ├── PHASE_A_DISCOVERY_KIT.md
+│   ├── ASYNC_REVENUE_TRACK.md
+│   ├── EuroQuant_Pilot_Offer_and_DPA.md
+│   ├── EuroQuant_Brand_Identity_v1.md
+│   ├── EUROQUANT_LINKEDIN_BRAND_PACK.md
+│   ├── README_DEMO.md
+│   └── archive/                  # Superseded file versions
+│
+├── ops/                          # Infrastructure, configs, scripts, SOPs
+│   ├── scripts/
+│   │   ├── seed_neo4j.py         # Load demo data into Neo4j
+│   │   └── hash_key.py           # Generate bcrypt API key hash
+│   ├── deploy/
+│   │   └── Dockerfile
+│   └── setup_mac.sh              # One-time Mac bootstrap
+│
+├── CLAUDE.md                     # Claude Code project intelligence (session context)
+├── README.md                     # This file
+├── render.yaml                   # Render deploy config (must stay at root)
+├── docker-compose.yml            # 4-service local stack (api, neo4j, postgres, redis)
+├── docker-compose.override.yml   # Dev hot-reload override
+├── Makefile                      # make up / down / logs / seed / demo
+├── .gitignore
+└── .env.example                  # Root-level env template
 ```
 
 ---
 
-*EuroQuant Risk Terminal v4 — Production Release — June 2026*
+## Quick Start
+
+```bash
+# Start the full local stack
+make up       # docker compose up -d (api + neo4j + postgres + redis)
+make seed     # load synthetic demo data into Neo4j
+make demo     # up + seed + open dashboard
+```
+
+API docs: `http://localhost:8000/api/docs`
+Neo4j browser: `http://localhost:7474`
+
+### Test the API
+
+```bash
+curl -X POST http://localhost:8000/api/v1/analyze \
+  -H "X-API-Key: your-key" \
+  -F "file=@test_doc.pdf"
+```
+
+---
+
+## Key Constraints
+
+- **Never store documents** — ephemeral processing is the core differentiator.
+- **Never commit `.env`** — secrets in `api/.env` only.
+- **Never bypass LangGraph DAG** — always `jarvis_engine.invoke(initial_state)`.
+- `render.yaml` must remain at repo root (Render requirement).
+- `docker-compose.yml` must remain at repo root (Docker convention).
+
+---
+
+*EuroQuant Risk Terminal · Internal / Co-founder Only · 11 June 2026*

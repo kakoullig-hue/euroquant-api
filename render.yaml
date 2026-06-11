@@ -32,7 +32,7 @@ services:
     name: euroquant-demo
     runtime: static
     buildCommand: echo "static"
-    staticPublishPath: /
+    staticPublishPath: web
     headers:
       - path: /*
         name: Cache-Control

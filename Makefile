@@ -1,7 +1,7 @@
 # EuroQuant Risk Terminal — one-command demo launch
 # Usage: make demo
 
-DEMO_DASHBOARD := EuroQuant_Demo_Dashboard.html
+DEMO_DASHBOARD := web/EuroQuant_Demo_Dashboard.html
 
 .PHONY: up down logs seed demo
 
@@ -15,7 +15,7 @@ logs:
 	docker compose logs -f
 
 seed:
-	python3 scripts/seed_neo4j.py
+	python3 ops/scripts/seed_neo4j.py
 
 # Brings up the stack, waits for the API to report healthy, seeds Neo4j
 # with the synthetic demo founder, then opens the bundled dashboard.
