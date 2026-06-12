@@ -66,15 +66,30 @@ function useCountUp(target, duration = 1400, delay = 0) {
 }
 
 // ── GaugeArc — GI score dial, count-up 1600ms / 300ms delay ────────────
+// Form per ui-ux-pro-max chart DB ("Performance vs Target", AA): single-KPI
+// gauge with clearly differentiated threshold zones, value + regime always
+// visible as text, screen-reader summary on the SVG, reduced-motion respected.
+// Zone colors are the Blueprint §10 severity palette — they override the
+// skill's suggested palette.
+const GI_ZONES = [
+  { from: 0,  to: 40,  color: C.clear,    label: "LOW" },
+  { from: 40, to: 70,  color: C.medium,   label: "MEDIUM" },
+  { from: 70, to: 100, color: C.critical, label: "HIGH" },
+];
+
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 function GaugeArc({ value, size = 210 }) {
-  const animated = useCountUp(value, 1600, 300);
-  const r = 82;
+  const reduced = prefersReducedMotion();
+  const animated = useCountUp(value, reduced ? 0 : 1600, reduced ? 0 : 300);
+  const r = 84;
   const cx = size / 2;
-  const cy = size / 2 + 12;
+  const cy = size / 2 + 8;
   const startAngle = -210;
-  const endAngle = 30;
-  const totalArc = endAngle - startAngle;
-  const pct = animated / 100;
+  const totalArc = 240;
+  const angleOf = (v) => startAngle + totalArc * (v / 100);
   const toRad = (d) => (d * Math.PI) / 180;
   const polar = (angle, radius) => ({
     x: cx + radius * Math.cos(toRad(angle)),
@@ -86,41 +101,70 @@ function GaugeArc({ value, size = 210 }) {
     const large = to - from > 180 ? 1 : 0;
     return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${large} 1 ${e.x} ${e.y}`;
   };
-  const fillEnd = startAngle + totalArc * pct;
-  const riskColor = animated >= 70 ? C.critical : animated >= 40 ? C.medium : C.clear;
-  const needle = polar(startAngle + totalArc * pct, r - 9);
 
-  // Threshold ticks at the regime boundaries (40 / 70) plus extremes
-  const ticks = [0, 40, 70, 100].map((v) => {
-    const a = startAngle + totalArc * (v / 100);
-    return { v, outer: polar(a, r + 12), inner: polar(a, r + 7), label: polar(a, r + 22) };
-  });
+  const zone = GI_ZONES.find((z) => animated < z.to) || GI_ZONES[GI_ZONES.length - 1];
+  const fillEnd = Math.max(angleOf(animated), startAngle + 0.1);
+  const ZONE_GAP = 2.5; // degrees of breathing room between regime segments
 
   return (
-    <svg width={size} height={size * 0.74} viewBox={`0 0 ${size} ${size * 0.74}`}>
+    <svg
+      width={size}
+      height={size * 0.85}
+      viewBox={`0 0 ${size} ${size * 0.85}`}
+      role="img"
+      aria-label={`Governance Intensity ${value.toFixed(0)} of 100 — ${zone.label} regime. Thresholds: medium at 40, high at 70.`}
+    >
       <defs>
-        <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor={C.clear} />
-          <stop offset="50%" stopColor={C.medium} />
-          <stop offset="100%" stopColor={C.critical} />
-        </linearGradient>
         <filter id="gaugeGlow">
-          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feGaussianBlur stdDeviation="2.2" result="blur" />
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
       </defs>
-      {ticks.map((t) => (
-        <g key={t.v}>
-          <line x1={t.inner.x} y1={t.inner.y} x2={t.outer.x} y2={t.outer.y} stroke={C.muted} strokeWidth="1.5" />
-          <text x={t.label.x} y={t.label.y + 3} textAnchor="middle" fill={C.muted} fontSize="8" fontFamily="'DM Mono', monospace">{t.v}</text>
-        </g>
+
+      {/* Regime zone track — three differentiated segments, severity palette */}
+      {GI_ZONES.map((z, i) => (
+        <path
+          key={z.label}
+          d={arcPath(
+            angleOf(z.from) + (i > 0 ? ZONE_GAP : 0),
+            angleOf(z.to) - (i < GI_ZONES.length - 1 ? ZONE_GAP : 0),
+            r
+          )}
+          fill="none"
+          stroke={z.color}
+          strokeWidth="4"
+          strokeLinecap="round"
+          opacity="0.32"
+        />
       ))}
-      <path d={arcPath(startAngle, endAngle, r)} fill="none" stroke="#1e2535" strokeWidth="13" strokeLinecap="round" />
-      <path d={arcPath(startAngle, Math.max(fillEnd, startAngle + 0.1), r)} fill="none" stroke="url(#gaugeGrad)" strokeWidth="13" strokeLinecap="round" filter="url(#gaugeGlow)" />
-      <line x1={cx} y1={cy} x2={needle.x} y2={needle.y} stroke={riskColor} strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
-      <circle cx={cx} cy={cy} r="5" fill={riskColor} />
-      <text x={cx} y={cy - 24} textAnchor="middle" fill={riskColor} fontSize="34" fontFamily="'DM Mono', monospace" fontWeight="500">{animated.toFixed(0)}</text>
-      <text x={cx} y={cy - 6} textAnchor="middle" fill={C.muted} fontSize="8" fontFamily="'DM Mono', monospace" letterSpacing="2">GOVERNANCE INTENSITY</text>
+
+      {/* Progress fill in the active regime color, inset under the track.
+          The rounded terminus is the position indicator — no needle to
+          collide with the value text. */}
+      <path d={arcPath(startAngle, angleOf(100), r - 12)} fill="none" stroke="#1e2535" strokeWidth="10" strokeLinecap="round" />
+      <path d={arcPath(startAngle, fillEnd, r - 12)} fill="none" stroke={zone.color} strokeWidth="10" strokeLinecap="round" filter="url(#gaugeGlow)" />
+
+      {/* Threshold ticks + scale labels at regime boundaries */}
+      {[0, 40, 70, 100].map((v) => {
+        const a = angleOf(v);
+        const inner = polar(a, r + 7);
+        const outer = polar(a, r + 13);
+        const label = polar(a, r + 23);
+        const boundary = v === 40 || v === 70;
+        return (
+          <g key={v}>
+            <line x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke={boundary ? C.sub : C.muted} strokeWidth={boundary ? 2 : 1.5} />
+            <text x={label.x} y={label.y + 3} textAnchor="middle" fill={boundary ? C.sub : C.muted} fontSize="8" fontFamily="'DM Mono', monospace">{v}</text>
+          </g>
+        );
+      })}
+
+      {/* Value + regime — always visible as text, never color-only */}
+      <text x={cx} y={cy} textAnchor="middle" fill={zone.color} fontSize="38" fontFamily="'DM Mono', monospace" fontWeight="500">
+        {animated.toFixed(0)}<tspan fontSize="13" fill={C.muted}> /100</tspan>
+      </text>
+      <text x={cx} y={cy + 19} textAnchor="middle" fill={zone.color} fontSize="10" fontFamily="'DM Mono', monospace" letterSpacing="2">{zone.label}</text>
+      <text x={cx} y={cy + 34} textAnchor="middle" fill={C.muted} fontSize="8" fontFamily="'DM Mono', monospace" letterSpacing="1.5">GOVERNANCE INTENSITY</text>
     </svg>
   );
 }
@@ -505,15 +549,41 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
 
         {/* ── Score row ── */}
         <div className="eq-fade" style={{ "--d": "120ms", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-          <div className="eq-card-hover" style={{ ...card(), gridColumn: "span 2", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <GaugeArc value={p.governance_intensity} size={210} />
-            <div style={{ display: "flex", gap: 22, marginTop: -4 }}>
-              {[["LOW", "<40", C.clear], ["MEDIUM", "40–70", C.medium], ["HIGH", ">70", C.critical]].map(([l, r, c]) => (
-                <div key={l} style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 8, color: c, fontFamily: FONT_MONO, letterSpacing: "0.12em" }}>{l}</div>
-                  <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO }}>{r}</div>
-                </div>
-              ))}
+          <div className="eq-card-hover" style={{ ...card({ padding: "18px 22px 16px" }), gridColumn: "span 2", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", width: "100%" }}>
+              <span style={D.label}>Governance Intensity Score</span>
+              <span style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, letterSpacing: "0.1em" }}>
+                THRESHOLDS 40 / 70 · FATF-ALIGNED
+              </span>
+            </div>
+            <div style={{ alignSelf: "center" }}>
+              <GaugeArc value={p.governance_intensity} size={210} />
+            </div>
+            {/* Regime strip — active regime highlighted; text + color, never color alone */}
+            <div style={{ display: "flex", gap: 6, width: "100%", marginTop: 2 }}>
+              {GI_ZONES.map((z) => {
+                const active = z === (GI_ZONES.find((x) => p.governance_intensity < x.to) || GI_ZONES[2]);
+                return (
+                  <div
+                    key={z.label}
+                    style={{
+                      flex: 1,
+                      textAlign: "center",
+                      padding: "5px 0 4px",
+                      borderRadius: 5,
+                      border: `1px solid ${active ? z.color + "55" : C.border}`,
+                      background: active ? z.color + "12" : "transparent",
+                    }}
+                  >
+                    <div style={{ fontSize: 8, color: active ? z.color : C.muted, fontFamily: FONT_MONO, letterSpacing: "0.15em" }}>
+                      {z.label}{active ? " ●" : ""}
+                    </div>
+                    <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, marginTop: 1 }}>
+                      {z.from}–{z.to}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
