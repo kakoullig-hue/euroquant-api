@@ -3,7 +3,15 @@
     "allow": [
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(git commit *)",
+      "Bash(grep -rn \"NEO4J_PASSWORD\\\\s*=\\\\s*[^$\\\\\"']\\\\|NEO4J_PASSWORD=[a-zA-Z0-9]\" /Users/kakoullig/Desktop/euroquant_v4 --include=\"*.py\" --include=\"*.yml\" --include=\"*.yaml\" --include=\"*.env*\" --include=\"*.sh\")",
+      "Bash(gh auth *)",
+      "Bash(git push *)",
+      "Bash(claude mcp *)",
+      "Bash(git -C /Users/kakoullig/Desktop/euroquant_v4 status --short)",
+      "Bash(npm --version)",
+      "Bash(git checkout *)"
     ]
   }
 }
