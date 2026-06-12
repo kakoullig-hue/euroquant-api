@@ -16,7 +16,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23001B52'/%3E%3Ctext x='32' y='42' font-family='Arial,sans-serif' font-size='30' font-weight='bold' fill='white' text-anchor='middle'%3EEQ%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <script>
   /* ============================================
      ONE-LINE SETUP: paste your Stripe payment
@@ -27,266 +27,654 @@
   const DEMO_URL = "https://demo.euroquant.io";
 </script>
 <style>
+  /* ============ DESIGN TOKENS — Blueprint §10 ============ */
   :root{
-    --navy:#001B52;
-    --navy-deep:#001038;
-    --paper:#F7F8FB;
-    --ink:#0B1220;
-    --steel:#5B7FD4;
-    --ice:#9DB4E8;
-    --flag:#C8401A;
-    --rule:#D8DEE9;
+    --canvas:#080c14;        /* Terminal Canvas — root bg only */
+    --card:#0d1420;          /* Card Surface */
+    --line:#131a27;          /* Border */
+    --muted:#2d3a50;
+    --sub:#8899aa;
+    --text:#e2e8f0;
+    --bright:#f0f4ff;
+    --navy:#001B52;          /* Institutional Navy — brand on light */
+    --primary:#003399;       /* Primary Blue — CTAs */
+    --cyan:#00F0FF;          /* accent only, ≤8px elements */
+    --critical:#ff3b3b;      /* D-1 PEP · sanctions · GI ≥ 70 */
+    --high:#ff8c00;          /* D-2 · offshore · procurement */
+    --medium:#ffb700;        /* D-3 · FATF elevated */
+    --clear:#00c896;         /* no flags · GI < 40 */
+    --paper:#f4f5f8;         /* specimen sheet */
+    --paper-ink:#10182a;
+    --paper-sub:#5a6478;
+    --paper-rule:#d6dae3;
+    --sans:'IBM Plex Sans',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;
+    --mono:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
   body{
-    background:var(--navy);
-    background:linear-gradient(180deg,var(--navy-deep) 0%,var(--navy) 18%,var(--navy) 100%);
-    color:var(--ink);
-    font-family:'IBM Plex Sans',-apple-system,sans-serif;
-    font-size:17px;line-height:1.6;
+    background:var(--canvas);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:16px;line-height:1.6;
     -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
   }
-  .mono{font-family:'IBM Plex Mono',monospace;}
+  ::selection{background:var(--primary);color:#fff;}
+  .mono{font-family:var(--mono);}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 24px;}
+  a{color:inherit;}
 
-  /* ---------- top classification bar ---------- */
-  .topbar{
-    max-width:880px;margin:0 auto;padding:18px 24px 14px;
-    display:flex;justify-content:space-between;align-items:baseline;gap:16px;
-    color:var(--ice);font-family:'IBM Plex Mono',monospace;
-    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  /* small cyan tick — the only permitted cyan (≤8px) */
+  .tick{display:inline-block;width:6px;height:6px;background:var(--cyan);flex:none;}
+
+  /* ============ 1 · TOPBAR ============ */
+  .topbar{border-bottom:1px solid var(--line);background:var(--canvas);}
+  .topbar .wrap{
+    display:flex;justify-content:space-between;align-items:center;gap:16px;
+    padding-top:18px;padding-bottom:18px;
   }
-  .topbar .dot{color:var(--steel);}
+  .brand{display:flex;align-items:center;gap:14px;min-width:0;}
+  .wordmark{
+    font-family:var(--sans);font-weight:700;font-size:17px;letter-spacing:.02em;
+    color:var(--bright);white-space:nowrap;
+  }
+  .classif{
+    display:flex;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--sub);white-space:nowrap;
+  }
+  .topbar .right{
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--sub);white-space:nowrap;
+  }
+  @media(max-width:640px){.topbar .right{display:none;}}
 
-  /* ---------- hero (on navy) ---------- */
-  .hero{max-width:880px;margin:0 auto;padding:56px 24px 64px;color:#fff;}
+  /* ============ 2 · HERO ============ */
+  .hero{padding:88px 0 72px;border-bottom:1px solid var(--line);}
   .hero h1{
-    font-family:'Space Grotesk',sans-serif;font-weight:700;
-    font-size:clamp(34px,5.6vw,58px);line-height:1.06;letter-spacing:-.015em;
-    max-width:15ch;
+    font-weight:700;color:var(--bright);
+    font-size:clamp(34px,5.4vw,58px);line-height:1.08;letter-spacing:-.018em;
+    max-width:17ch;
   }
-  .hero h1 em{font-style:normal;color:var(--ice);}
-  .hero p.sub{margin-top:22px;max-width:52ch;color:#C9D4EE;font-size:18px;}
+  .hero h1 em{
+    font-style:normal;
+    border-bottom:3px solid var(--cyan);
+    padding-bottom:2px;
+  }
+  .hero .sub{
+    margin-top:24px;max-width:56ch;color:var(--sub);
+    font-size:18px;line-height:1.65;
+  }
+  .hero .sub strong{color:var(--text);font-weight:500;}
+  .cta-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:40px;}
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;
+    background:var(--primary);color:#fff;text-decoration:none;
+    font-family:var(--sans);font-weight:600;font-size:16px;letter-spacing:.01em;
+    padding:16px 32px;border:1px solid transparent;border-radius:3px;
+    min-height:48px;cursor:pointer;
+    transition:transform .18s ease,box-shadow .18s ease,background .18s ease;
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(0,51,153,.35);background:#0040bf;}
+  .btn:focus-visible{outline:3px solid var(--cyan);outline-offset:3px;}
+  .btn-ghost{
+    display:inline-flex;align-items:center;gap:10px;
+    color:var(--text);text-decoration:none;
+    font-family:var(--sans);font-weight:600;font-size:15px;
+    padding:15px 24px;border:1px solid var(--muted);border-radius:3px;
+    min-height:48px;cursor:pointer;
+    transition:border-color .18s ease,background .18s ease;
+  }
+  .btn-ghost:hover{border-color:var(--sub);background:rgba(136,153,170,.06);}
+  .btn-ghost:focus-visible{outline:3px solid var(--cyan);outline-offset:3px;}
+  .hero-meta{
+    display:flex;flex-wrap:wrap;gap:12px 28px;margin-top:36px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--sub);
+  }
+  .hero-meta span{display:inline-flex;align-items:center;gap:9px;}
 
-  /* signature: the ephemeral cap-table row */
-  .ephemeral{
-    margin-top:44px;border:1px solid rgba(157,180,232,.35);border-radius:6px;
-    padding:18px 20px;font-family:'IBM Plex Mono',monospace;font-size:13px;
-    color:var(--ice);background:rgba(255,255,255,.03);
-    overflow:hidden;
-  }
-  .ephemeral .lbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#7E96CC;display:block;margin-bottom:10px;}
-  .ephemeral .row{white-space:nowrap;overflow:hidden;}
-  .ephemeral .row span{display:inline-block;animation:dissolve 7s ease-in-out infinite;}
-  @keyframes dissolve{
-    0%{opacity:0;filter:blur(4px);}
-    12%{opacity:1;filter:blur(0);}
-    72%{opacity:1;filter:blur(0);}
-    92%{opacity:0;filter:blur(6px);}
-    100%{opacity:0;}
-  }
-  .ephemeral .note{margin-top:10px;font-size:11px;color:#7E96CC;}
-  @media (prefers-reduced-motion: reduce){
-    .ephemeral .row span{animation:none;opacity:.55;}
-  }
-
-  /* ---------- the report sheet ---------- */
-  .sheet{
-    max-width:880px;margin:0 auto 80px;background:var(--paper);
-    border-radius:8px;box-shadow:0 30px 80px rgba(0,8,30,.5);
-    overflow:hidden;
-  }
-  .sheet-head{
-    padding:26px 40px;border-bottom:2px solid var(--navy);
-    display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;
-  }
-  .sheet-head .doc{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#5A6478;}
-  .sheet-head .price{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;color:var(--navy);}
-  section{padding:44px 40px;border-bottom:1px solid var(--rule);}
-  section:last-of-type{border-bottom:none;}
-  h2{
-    font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--navy);
-    font-size:26px;letter-spacing:-.01em;margin-bottom:18px;
-  }
+  /* ============ shared section chrome ============ */
+  .sec{padding:80px 0;border-bottom:1px solid var(--line);}
   .eyebrow{
-    font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;
-    text-transform:uppercase;color:var(--steel);display:block;margin-bottom:10px;
+    display:flex;align-items:center;gap:9px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--sub);margin-bottom:14px;
   }
-  p.body{max-width:60ch;color:#2A3344;}
+  .sec h2{
+    font-weight:700;color:var(--bright);font-size:clamp(24px,3vw,32px);
+    letter-spacing:-.012em;line-height:1.2;max-width:24ch;
+  }
+  .sec .lede{margin-top:14px;max-width:58ch;color:var(--sub);font-size:16.5px;}
 
-  /* report contents — field list */
-  .fields{margin-top:24px;border-top:1px solid var(--rule);}
+  /* ============ 3 · REPORT SPECIMEN ============ */
+  .specimen-sec{padding:80px 0;border-bottom:1px solid var(--line);}
+  .sheet{
+    position:relative;margin-top:44px;
+    background:var(--paper);color:var(--paper-ink);
+    border-radius:4px;overflow:hidden;
+    box-shadow:0 1px 0 rgba(255,255,255,.06), 0 32px 90px rgba(0,8,30,.6);
+    /* single specimen reveal */
+    opacity:0;transform:translateY(16px);
+    transition:opacity .48s ease-out,transform .48s ease-out;
+  }
+  .sheet.in{opacity:1;transform:none;}
+  @media (prefers-reduced-motion:reduce){
+    .sheet{opacity:1;transform:none;transition:none;}
+    *,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important;}
+  }
+  /* watermark */
+  .wm{
+    position:absolute;inset:-30%;pointer-events:none;user-select:none;z-index:0;
+    display:flex;flex-direction:column;justify-content:space-around;
+    transform:rotate(-26deg);
+    font-family:var(--mono);font-weight:500;font-size:34px;letter-spacing:.32em;
+    text-transform:uppercase;color:rgba(16,24,42,.055);white-space:nowrap;text-align:center;
+  }
+  .sheet > *:not(.wm){position:relative;z-index:1;}
+
+  .doc-head{
+    display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;
+    padding:26px 44px 18px;
+  }
+  .doc-head .org{font-family:var(--sans);font-weight:700;font-size:15px;color:var(--navy);letter-spacing:.01em;}
+  .doc-head .org span{font-weight:400;color:var(--paper-sub);}
+  .doc-head .ref{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--paper-sub);}
+  .doc-rule{height:3px;background:var(--navy);margin:0 44px;}
+  .doc-classif{
+    margin:14px 44px 0;padding:9px 14px;
+    border:1px solid var(--paper-rule);
+    display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--paper-sub);
+  }
+  .doc-classif strong{color:var(--paper-ink);font-weight:500;}
+
+  .doc-body{padding:30px 44px 0;}
+  .doc-sec{margin-bottom:34px;}
+  .doc-sec-h{
+    display:flex;align-items:baseline;gap:12px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--navy);font-weight:500;
+    border-bottom:1px solid var(--navy);padding-bottom:7px;margin-bottom:0;
+  }
+  .doc-sec-h .n{color:var(--paper-sub);}
+
+  /* subject strip */
+  .subject{
+    display:flex;justify-content:space-between;align-items:baseline;gap:4px 10px;flex-wrap:wrap;
+    padding:18px 0 22px;
+  }
+  .subject .name{font-family:var(--sans);font-weight:700;font-size:24px;letter-spacing:-.01em;color:var(--paper-ink);}
+  .subject .meta{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--paper-sub);}
+
+  /* ownership table */
+  .otable{width:100%;border-collapse:collapse;margin-top:2px;}
+  .otable th{
+    font-family:var(--mono);font-weight:400;font-size:9.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--paper-sub);text-align:left;
+    padding:12px 14px 8px 0;border-bottom:1px solid var(--paper-rule);
+  }
+  .otable td{
+    padding:13px 14px 13px 0;border-bottom:1px solid var(--paper-rule);
+    vertical-align:baseline;font-size:14.5px;
+  }
+  .otable tr:last-child td{border-bottom:none;}
+  .otable .ent{font-weight:600;color:var(--paper-ink);}
+  .otable .ent small{display:block;font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.08em;color:var(--paper-sub);margin-top:2px;}
+  .otable .num{font-family:var(--mono);font-size:13px;color:var(--paper-ink);white-space:nowrap;}
+  .otable .obs{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--paper-sub);}
+  /* severity stamps — ink text on token bg for contrast */
+  .stamp{
+    display:inline-block;font-family:var(--mono);font-weight:500;
+    font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--paper-ink);padding:2px 7px;border-radius:2px;white-space:nowrap;
+  }
+  .stamp.critical{background:var(--critical);color:#fff;}
+  .stamp.high{background:var(--high);}
+  .stamp.medium{background:var(--medium);}
+  .stamp.clear{background:var(--clear);}
+  .stamp.neutral{background:transparent;border:1px solid var(--paper-rule);color:var(--paper-sub);}
+
+  /* screening result lines */
+  .screenline{
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    padding:15px 0;border-bottom:1px solid var(--paper-rule);
+  }
+  .screenline:last-child{border-bottom:none;}
+  .screenline .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper-sub);min-width:96px;}
+  .screenline .r{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:15px;color:var(--paper-ink);}
+  .screenline .sq{display:inline-block;width:8px;height:8px;flex:none;}
+  .screenline .src{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--paper-sub);}
+
+  /* GI score block */
+  .gi{
+    display:grid;grid-template-columns:auto 1fr;gap:10px 44px;align-items:end;
+    padding-top:20px;
+  }
+  .gi .score{font-family:var(--mono);font-weight:500;font-size:74px;line-height:.95;letter-spacing:-.02em;color:var(--critical);}
+  .gi .score small{font-size:20px;letter-spacing:0;color:var(--paper-sub);font-weight:400;}
+  .gi .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper-sub);margin-bottom:8px;}
+  .gi-band{grid-column:2;align-self:end;padding-bottom:10px;}
+  .gi-bar{position:relative;height:8px;background:#e3e6ed;border-radius:2px;overflow:hidden;}
+  .gi-bar .fill{position:absolute;inset:0 29% 0 0;background:linear-gradient(90deg,var(--clear),var(--medium) 55%,var(--high) 78%,var(--critical));}
+  .gi-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--paper-sub);margin-top:6px;}
+  .gi-verdict{
+    grid-column:1 / -1;margin-top:18px;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    border:1px solid var(--critical);border-left:4px solid var(--critical);
+    padding:12px 16px;border-radius:2px;
+  }
+  .gi-verdict .stamp{font-size:10px;}
+  .gi-verdict p{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--paper-ink);}
+
+  /* redacted findings teaser */
+  .findings{list-style:none;margin-top:2px;}
+  .findings li{
+    font-family:var(--mono);font-size:12px;line-height:1.8;letter-spacing:.02em;
+    color:#3a4456;padding:10px 0;border-bottom:1px dashed var(--paper-rule);
+  }
+  .findings li:last-child{border-bottom:none;}
+  .findings .fk{color:var(--paper-sub);font-size:10px;letter-spacing:.14em;margin-right:10px;}
+  .findings .redact{color:transparent;background:#262e3f;border-radius:1px;user-select:none;}
+  .findings-more{
+    margin-top:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--paper-sub);
+  }
+
+  .doc-foot{
+    margin-top:8px;padding:16px 44px 24px;border-top:1px solid var(--paper-rule);
+    display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--paper-sub);
+  }
+  .sheet-caption{
+    margin-top:18px;font-size:13.5px;color:var(--sub);max-width:64ch;
+  }
+
+  /* ============ 4 · WHAT YOU RECEIVE ============ */
+  .fields{margin-top:36px;border-top:1px solid var(--line);}
   .field{
-    display:grid;grid-template-columns:120px 1fr;gap:18px;
-    padding:16px 0;border-bottom:1px solid var(--rule);align-items:baseline;
+    display:grid;grid-template-columns:150px 1fr;gap:20px;
+    padding:20px 0;border-bottom:1px solid var(--line);align-items:baseline;
   }
-  .field .k{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--steel);letter-spacing:.06em;}
-  .field .v{color:#2A3344;font-size:16px;}
-  .field .v strong{color:var(--navy);font-weight:600;}
-  .flagchip{
-    display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
-    letter-spacing:.1em;color:var(--flag);border:1px solid var(--flag);
-    border-radius:3px;padding:2px 7px;text-transform:uppercase;vertical-align:middle;margin-left:8px;
-  }
+  .field .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--sub);text-transform:uppercase;}
+  .field .v{color:var(--sub);font-size:16px;max-width:62ch;}
+  .field .v strong{color:var(--text);font-weight:600;}
+  @media(max-width:560px){.field{grid-template-columns:1fr;gap:6px;padding:16px 0;}}
 
-  /* two modes */
-  .modes{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:26px;}
+  /* ============ 5 · TWO INPUT MODES ============ */
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:36px;}
   .mode{
-    border:1.5px solid var(--navy);border-radius:6px;padding:26px 24px;background:#fff;
+    background:var(--card);border:1px solid var(--line);border-radius:4px;
+    padding:30px 28px;display:flex;flex-direction:column;
   }
-  .mode h3{font-family:'Space Grotesk',sans-serif;font-size:19px;color:var(--navy);margin-bottom:4px;}
-  .mode .tag{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--steel);}
-  .mode p{margin-top:12px;font-size:15.5px;color:#2A3344;}
-  .mode.private{background:var(--navy);border-color:var(--navy);}
-  .mode.private h3{color:#fff;}
-  .mode.private .tag{color:var(--ice);}
-  .mode.private p{color:#C9D4EE;}
+  .mode .tag{
+    font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--sub);
+  }
+  .mode h3{font-weight:700;font-size:20px;color:var(--bright);margin-top:8px;letter-spacing:-.01em;}
+  .mode p{margin-top:12px;font-size:15.5px;color:var(--sub);}
+  .mode.private{border-color:var(--primary);}
+  .guarantee{
+    margin-top:auto;padding-top:20px;
+  }
+  .guarantee .inner{
+    margin-top:20px;border:1px solid var(--muted);border-radius:3px;
+    padding:14px 16px;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--text);line-height:2;
+  }
+  .guarantee .inner span{display:flex;align-items:center;gap:9px;}
   @media(max-width:680px){.modes{grid-template-columns:1fr;}}
 
-  /* process strip */
-  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:26px;}
-  .step .k{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--steel);letter-spacing:.08em;display:block;margin-bottom:8px;}
-  .step p{font-size:15.5px;color:#2A3344;}
+  /* ============ 6 · PROCESS ============ */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:36px;}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:26px 24px;}
+  .step .k{
+    display:block;font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+    color:var(--sub);text-transform:uppercase;margin-bottom:12px;
+  }
+  .step p{font-size:15px;color:var(--sub);}
+  .step p strong{color:var(--text);font-weight:600;}
   @media(max-width:680px){.steps{grid-template-columns:1fr;}}
 
-  /* CTA */
-  .cta-block{text-align:left;}
-  .cta-row{display:flex;align-items:center;gap:26px;flex-wrap:wrap;margin-top:26px;}
-  .btn{
-    display:inline-block;background:var(--navy);color:#fff;text-decoration:none;
-    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;
-    padding:16px 34px;border-radius:5px;letter-spacing:.01em;
-    transition:transform .15s ease, box-shadow .15s ease;
-  }
-  .btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(0,27,82,.28);}
-  .btn:focus-visible{outline:3px solid var(--steel);outline-offset:3px;}
-  .btn-ghost{
-    display:inline-block;color:var(--navy);text-decoration:none;
-    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;
-    padding:15px 22px;border:1.5px solid var(--navy);border-radius:5px;
-    transition:background .15s ease;
-  }
-  .btn-ghost:hover{background:rgba(0,27,82,.06);}
-  .btn-ghost:focus-visible{outline:3px solid var(--steel);outline-offset:3px;}
-  .cta-row .pr{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;color:var(--navy);}
-  .cta-row .pr small{display:block;font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:11px;letter-spacing:.1em;color:#5A6478;text-transform:uppercase;margin-top:2px;}
-  .micro{margin-top:18px;font-size:13.5px;color:#5A6478;max-width:56ch;}
+  /* ============ 7 · TRUST ============ */
+  .trust p.body{margin-top:18px;max-width:62ch;color:var(--sub);font-size:17px;line-height:1.7;}
+  .trust p.body strong{color:var(--text);font-weight:600;}
+  .creds{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:24px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sub);}
+  .creds span{display:inline-flex;align-items:center;gap:9px;}
 
-  /* terms / DPA-lite */
-  .terms{background:#EFF2F8;}
-  .terms h2{font-size:20px;}
-  .terms p{font-size:14px;color:#3A4456;max-width:70ch;margin-bottom:12px;}
-  .terms p:last-child{margin-bottom:0;}
-
-  /* footer */
-  footer{
-    max-width:880px;margin:0 auto;padding:0 24px 56px;
-    color:#7E96CC;font-family:'IBM Plex Mono',monospace;font-size:11.5px;
-    letter-spacing:.08em;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  /* ============ 8 · PRICE / ORDER ============ */
+  .order-card{
+    margin-top:36px;background:var(--card);border:1px solid var(--line);border-radius:4px;
+    padding:40px 40px 36px;
+    display:flex;justify-content:space-between;align-items:center;gap:32px;flex-wrap:wrap;
   }
-  footer a{color:var(--ice);text-decoration:none;}
-  footer a:hover{text-decoration:underline;}
+  .price .amount{font-family:var(--mono);font-weight:500;font-size:56px;line-height:1;color:var(--bright);letter-spacing:-.02em;}
+  .price .terms{
+    margin-top:10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--sub);
+  }
+  .order-ctas{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .micro{margin-top:20px;font-size:13.5px;color:var(--sub);max-width:60ch;}
+  @media(max-width:680px){.order-card{padding:28px 24px;}}
+
+  /* ============ 9 · TERMS ============ */
+  .terms-sec h2{font-size:20px;}
+  .terms-sec p{margin-top:16px;font-size:14px;line-height:1.75;color:var(--sub);max-width:74ch;}
+
+  /* ============ 10 · FOOTER ============ */
+  .footer{padding:36px 0 48px;}
+  .footer .wrap{
+    display:flex;justify-content:space-between;gap:14px 24px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--sub);
+  }
+  .footer a{color:var(--text);text-decoration:none;}
+  .footer a:hover{text-decoration:underline;}
+  .footer a:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;}
+
+  @media(max-width:680px){
+    .hero{padding:60px 0 56px;}
+    .sec,.specimen-sec{padding:56px 0;}
+    .doc-head,.doc-body{padding-left:22px;padding-right:22px;}
+    .doc-rule,.doc-classif{margin-left:22px;margin-right:22px;}
+    .doc-foot{padding-left:22px;padding-right:22px;}
+    .otable thead{display:none;}
+    .otable,.otable tbody,.otable tr,.otable td{display:block;width:100%;}
+    .otable td{padding:3px 0;border-bottom:none;}
+    .otable tr{padding:13px 0;border-bottom:1px solid var(--paper-rule);}
+    .otable tr:last-child{border-bottom:none;}
+    .gi{grid-template-columns:1fr;gap:18px;}
+    .gi-band{grid-column:1;}
+    .gi .score{font-size:60px;}
+    .wm{font-size:22px;}
+  }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <span>EUROQUANT<span class="dot"> · </span>REGULATORY INTELLIGENCE</span>
-  <span>SAMPLE ENGAGEMENT — ADVISORY</span>
-</div>
-
-<div class="hero">
-  <h1>See your deal the way a <em>regulator</em> would.</h1>
-  <p class="sub">A structured governance-risk report on one company — ownership structure, sanctions and PEP screening, and a single governance-risk score. Delivered in 48 hours. Reviewed by an analyst before it reaches you.</p>
-
-  <div class="ephemeral" aria-label="Documents are processed in memory and destroyed after analysis">
-    <span class="lbl">In-memory processing</span>
-    <div class="row"><span class="mono">SHAREHOLDER_03 · HOLDCO (CY) · 23.7% · UBO: ████████ · CROSS-REF: 2 FLAGS</span></div>
-    <div class="note">Your documents are analyzed in memory and destroyed. Nothing is written to disk — by design, not by policy.</div>
+<!-- ============ 1 · TOPBAR ============ -->
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">
+      <span class="wordmark">EUROQUANT</span>
+      <span class="classif" aria-label="Regulatory intelligence"><span class="tick" aria-hidden="true"></span>REGULATORY INTELLIGENCE</span>
+    </div>
+    <span class="right">SAMPLE ENGAGEMENT — ADVISORY</span>
   </div>
-</div>
+</header>
 
-<div class="sheet">
+<main>
 
-  <div class="sheet-head">
-    <span class="doc">DOC TYPE: GOVERNANCE-RISK REPORT · SCOPE: 1 COMPANY · DELIVERY: 48H</span>
-    <span class="price">Sample Report</span>
+<!-- ============ 2 · HERO ============ -->
+<section class="hero" aria-labelledby="hero-h">
+  <div class="wrap">
+    <h1 id="hero-h">See your deal the way a <em>regulator</em> would.</h1>
+    <p class="sub">A structured governance-risk report on one company — <strong>ownership structure, sanctions and PEP screening, and a single governance-risk score</strong>. Delivered in 48 hours. Reviewed by an analyst before it reaches you.</p>
+    <div class="cta-row">
+      <a class="btn" data-stripe href="#">Order a Sample Report — €490</a>
+      <a class="btn-ghost" data-demo href="#">View live sample&nbsp;→</a>
+    </div>
+    <div class="hero-meta" aria-label="Engagement terms">
+      <span><span class="tick" aria-hidden="true"></span>DELIVERY · 48H</span>
+      <span><span class="tick" aria-hidden="true"></span>IN-MEMORY PROCESSING · NEVER STORED</span>
+      <span><span class="tick" aria-hidden="true"></span>ANALYST-REVIEWED</span>
+    </div>
   </div>
+</section>
 
-  <section>
-    <span class="eyebrow">What you receive</span>
-    <h2>One company. Every governance question answered.</h2>
-    <p class="body">Built for funds investing where ownership matters most — DefenseTech, GovTech, DeepTech. Each report covers:</p>
+<!-- ============ 3 · REPORT SPECIMEN ============ -->
+<section class="specimen-sec" aria-labelledby="spec-h">
+  <div class="wrap">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>REPORT SPECIMEN</p>
+    <h2 id="spec-h">This is what lands on your desk.</h2>
+    <p class="lede">An excerpt from a report rendered on our synthetic demonstration subject — same structure, same scoring discipline as a paid engagement.</p>
+
+    <figure class="sheet" aria-label="Specimen page from a sample governance-risk report, rendered from synthetic data">
+      <div class="wm" aria-hidden="true">
+        <span>SYNTHETIC SPECIMEN&ensp;·&ensp;SYNTHETIC SPECIMEN</span>
+        <span>SYNTHETIC SPECIMEN&ensp;·&ensp;SYNTHETIC SPECIMEN</span>
+        <span>SYNTHETIC SPECIMEN&ensp;·&ensp;SYNTHETIC SPECIMEN</span>
+        <span>SYNTHETIC SPECIMEN&ensp;·&ensp;SYNTHETIC SPECIMEN</span>
+        <span>SYNTHETIC SPECIMEN&ensp;·&ensp;SYNTHETIC SPECIMEN</span>
+      </div>
+
+      <div class="doc-head">
+        <span class="org">EUROQUANT <span>· Governance-Risk Report</span></span>
+        <span class="ref">REF EQ-SR-2026-014 · EXCERPT</span>
+      </div>
+      <div class="doc-rule" aria-hidden="true"></div>
+      <div class="doc-classif">
+        <span>CLASSIFICATION: <strong>SAMPLE ENGAGEMENT — ADVISORY</strong></span>
+        <span>DATA: <strong>SYNTHETIC — NO REAL PERSON OR COMPANY</strong></span>
+      </div>
+
+      <div class="doc-body">
+
+        <div class="subject">
+          <span class="name">Kaspars Veidemanis</span>
+          <span class="meta">SUBJECT ID FND-SYNTH-BALT-014 · NATIONALITY LV</span>
+        </div>
+
+        <div class="doc-sec">
+          <h3 class="doc-sec-h"><span class="n">§1</span> OWNERSHIP &amp; CONTROL</h3>
+          <table class="otable">
+            <thead>
+              <tr><th scope="col">Entity</th><th scope="col">Holding</th><th scope="col">Observation</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="ent">Nordhaven Maritime Autonomy AS<small>EE · ACTIVE · INC. 2020</small></td>
+                <td class="num">58.0%</td>
+                <td class="obs">DEFENCE PROCUREMENT · €6.2M <span class="stamp high">HIGH</span></td>
+              </tr>
+              <tr>
+                <td class="ent">Baltic Nominee Holdings Ltd<small>VG (BVI) · ACTIVE · INC. 2018</small></td>
+                <td class="num">100.0%</td>
+                <td class="obs">OFFSHORE NOMINEE · FATF HIGH <span class="stamp high">HIGH</span></td>
+              </tr>
+              <tr>
+                <td class="ent">Riga DeepSensor SIA<small>LV · ACTIVE · INC. 2021</small></td>
+                <td class="num">34.0%</td>
+                <td class="obs">PUBLIC PROCUREMENT · €1.1M <span class="stamp neutral">NOTED</span></td>
+              </tr>
+              <tr>
+                <td class="ent">Kurzeme Defence Logistics SIA<small>LV · DISSOLVED 2023 · INC. 2016</small></td>
+                <td class="num">50.0%</td>
+                <td class="obs">DISSOLVED ENTITY TRAIL <span class="stamp medium">MEDIUM</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="doc-sec">
+          <h3 class="doc-sec-h"><span class="n">§2</span> SANCTIONS &amp; PEP SCREENING</h3>
+          <div class="screenline">
+            <span class="k">SANCTIONS</span>
+            <span class="r"><span class="sq" style="background:var(--clear)" aria-hidden="true"></span>NO MATCH</span>
+            <span class="src">OFAC SDN · EU CONSOLIDATED LIST</span>
+          </div>
+          <div class="screenline">
+            <span class="k">PEP</span>
+            <span class="r"><span class="sq" style="background:var(--critical)" aria-hidden="true"></span>ASSOCIATE — D-1 BOARD-LEVEL LINK</span>
+            <span class="src">FORMER STATE SECRETARY, MINISTRY OF DEFENCE (LV) — NON-EXECUTIVE BOARD SEAT</span>
+          </div>
+        </div>
+
+        <div class="doc-sec">
+          <h3 class="doc-sec-h"><span class="n">§3</span> GOVERNANCE INTENSITY</h3>
+          <div class="gi">
+            <div>
+              <p class="lbl">GI SCORE</p>
+              <p class="score">71.0<small>&hairsp;/100</small></p>
+            </div>
+            <div class="gi-band">
+              <div class="gi-bar" role="img" aria-label="Governance intensity 71 of 100 — within the elevated band"><span class="fill"></span></div>
+              <div class="gi-scale" aria-hidden="true"><span>0</span><span>CLEAR &lt;40</span><span>ELEVATED ≥70</span><span>100</span></div>
+            </div>
+            <div class="gi-verdict">
+              <span class="stamp critical">HIGH RISK / CONDITIONAL</span>
+              <p>ENHANCED DUE DILIGENCE REQUIRED BEFORE TERM SHEET</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="doc-sec">
+          <h3 class="doc-sec-h"><span class="n">§4</span> FINDINGS (EXTRACT)</h3>
+          <ul class="findings">
+            <li><span class="fk">F-01</span>DIRECT BOARD-LEVEL PEP LINK: former MoD State Secretary (LV) holds a non-executive seat at an active defence-procurement bidder <span class="redact">████████████████████</span></li>
+            <li><span class="fk">F-02</span>LAYERED OFFSHORE CONTROL: 100% of founder equity routed through a BVI nominee vehicle — beneficial ownership <span class="redact">██████████████████████████</span></li>
+          </ul>
+          <p class="findings-more">7 FINDINGS + ANALYST PRE-CONDITIONS — IN THE COMPLETE REPORT</p>
+        </div>
+
+      </div>
+
+      <div class="doc-foot">
+        <span>SHA-256 9f2b7c41…0e1f</span>
+        <span>PROCESSED 2026-06-04 09:14 UTC</span>
+        <span>ANALYST-REVIEWED PRIOR TO DELIVERY</span>
+      </div>
+    </figure>
+
+    <p class="sheet-caption">Rendered from our synthetic demonstration dataset — no real person, no real company. Every paid report follows this exact structure, watermarked as a sample engagement.</p>
+  </div>
+</section>
+
+<!-- ============ 4 · WHAT YOU RECEIVE ============ -->
+<section class="sec" aria-labelledby="receive-h">
+  <div class="wrap">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>WHAT YOU RECEIVE</p>
+    <h2 id="receive-h">One company. Every governance question answered.</h2>
+    <p class="lede">Built for funds investing where ownership matters most — DefenseTech, GovTech, DeepTech. Each report covers:</p>
     <div class="fields">
       <div class="field"><span class="k">OWNERSHIP</span><span class="v"><strong>Full ownership structure</strong> — entities, layers, and the people behind them.</span></div>
-      <div class="field"><span class="k">SCREENING</span><span class="v"><strong>Sanctions &amp; PEP screening</strong> across the ownership chain.<span class="flagchip">Flagged</span></span></div>
+      <div class="field"><span class="k">SCREENING</span><span class="v"><strong>Sanctions &amp; PEP screening</strong> across the ownership chain.</span></div>
       <div class="field"><span class="k">SCORE</span><span class="v"><strong>A structured governance-risk score</strong> — one number, defensible logic.</span></div>
       <div class="field"><span class="k">PATHWAYS</span><span class="v"><strong>Flagged pathways</strong> — where ownership connects to political or sanctioned networks.</span></div>
       <div class="field"><span class="k">REVIEW</span><span class="v"><strong>Analyst sign-off</strong> on every report before delivery.</span></div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section>
-    <span class="eyebrow">Choose your input</span>
-    <h2>Two modes. No trust leap required.</h2>
+<!-- ============ 5 · TWO INPUT MODES ============ -->
+<section class="sec" aria-labelledby="modes-h">
+  <div class="wrap">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>CHOOSE YOUR INPUT</p>
+    <h2 id="modes-h">Two modes. No trust leap required.</h2>
     <div class="modes">
       <div class="mode">
-        <span class="tag">Public mode</span>
+        <span class="tag">PUBLIC MODE</span>
         <h3>Name a company</h3>
         <p>Give us the legal name and country of registration. We work entirely from public registry data — you share nothing.</p>
+        <div class="guarantee">
+          <div class="inner">
+            <span><span class="tick" aria-hidden="true"></span>NO DOCUMENTS REQUIRED</span>
+          </div>
+        </div>
       </div>
       <div class="mode private">
-        <span class="tag">Private mode</span>
+        <span class="tag">PRIVATE MODE</span>
         <h3>Submit a document</h3>
-        <p>Send a redacted or synthetic cap-table document under our data processing terms. Analyzed in memory, destroyed after analysis — never stored.</p>
+        <p>Send a redacted or synthetic cap-table document under our data processing terms.</p>
+        <div class="guarantee">
+          <div class="inner" aria-label="Ephemeral processing guarantee">
+            <span><span class="tick" aria-hidden="true"></span>ANALYZED IN MEMORY</span>
+            <span><span class="tick" aria-hidden="true"></span>DOCUMENT DESTROYED · 0 BYTES RETAINED</span>
+            <span><span class="tick" aria-hidden="true"></span>NEVER WRITTEN TO DISK — BY DESIGN</span>
+          </div>
+        </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section>
-    <span class="eyebrow">How it works</span>
-    <h2>Three steps. Forty-eight hours.</h2>
+<!-- ============ 6 · PROCESS ============ -->
+<section class="sec" aria-labelledby="process-h">
+  <div class="wrap">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>HOW IT WORKS</p>
+    <h2 id="process-h">Three steps. Forty-eight hours.</h2>
     <div class="steps">
-      <div class="step"><span class="k">01 — ORDER</span><p>Complete checkout. You receive intake instructions by email within two hours.</p></div>
-      <div class="step"><span class="k">02 — SUBMIT</span><p>Reply with a company name (public mode) or your redacted document (private mode).</p></div>
-      <div class="step"><span class="k">03 — RECEIVE</span><p>Your analyst-reviewed report arrives as a PDF within 48 hours of submission.</p></div>
+      <div class="step"><span class="k">01 — ORDER</span><p><strong>Complete checkout.</strong> You receive intake instructions by email within two hours.</p></div>
+      <div class="step"><span class="k">02 — SUBMIT</span><p><strong>Reply with your subject.</strong> A company name (public mode) or your redacted document (private mode).</p></div>
+      <div class="step"><span class="k">03 — RECEIVE</span><p><strong>Your report arrives.</strong> Analyst-reviewed, as a PDF, within 48 hours of submission.</p></div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="cta-block">
-    <span class="eyebrow">Sample engagement</span>
-    <h2>Order a Sample Governance Report</h2>
-    <p class="body">Fixed scope, fixed price, no calls required. Each report is provided as advisory output and watermarked as a sample engagement.</p>
-    <div class="cta-row">
-      <a class="btn" id="order-btn" href="#">Order a Sample Report</a>
-      <a class="btn-ghost" id="demo-btn" href="#">View a live sample report →</a>
-      <span class="pr">€490<small>Introductory · per company</small></span>
+<!-- ============ 7 · WHO'S BEHIND THIS ============ -->
+<section class="sec trust" aria-labelledby="trust-h">
+  <div class="wrap">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>WHO'S BEHIND THIS</p>
+    <h2 id="trust-h">Built in the open, run by the founder.</h2>
+    <p class="body">EuroQuant is founded by <strong>George Kakoullis</strong> — economics, University of Cyprus; former Special Forces (LOK). SINN 2026 finalist and selected for the G4 Ventures "G4 Friends" program. Every order lands directly with the founder, and every report is reviewed before delivery.</p>
+    <div class="creds" aria-label="Credentials">
+      <span><span class="tick" aria-hidden="true"></span>SINN 2026 FINALIST</span>
+      <span><span class="tick" aria-hidden="true"></span>G4 VENTURES · G4 FRIENDS</span>
+      <span><span class="tick" aria-hidden="true"></span>FORMER SPECIAL FORCES (LOK)</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8 · PRICE + CTA ============ -->
+<section class="sec" aria-labelledby="order-h">
+  <div class="wrap">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>SAMPLE ENGAGEMENT</p>
+    <h2 id="order-h">Order a Sample Governance Report</h2>
+    <p class="lede">Fixed scope, fixed price, no calls required. Each report is provided as advisory output and watermarked as a sample engagement.</p>
+    <div class="order-card">
+      <div class="price">
+        <p class="amount">€490</p>
+        <p class="terms">INTRODUCTORY · PER COMPANY · DELIVERY 48H</p>
+      </div>
+      <div class="order-ctas">
+        <a class="btn" data-stripe href="#">Order a Sample Report</a>
+        <a class="btn-ghost" data-demo href="#">View live sample&nbsp;→</a>
+      </div>
     </div>
     <p class="micro">The live sample uses synthetic data — same structure, same scoring, no real company. Questions before ordering? Write to us — the founder answers directly.</p>
-  </section>
+  </div>
+</section>
 
-  <section>
-    <span class="eyebrow">Who's behind this</span>
-    <h2>Built in the open, run by the founder.</h2>
-    <p class="body">EuroQuant is founded by George Kakoullis — economics, University of Cyprus; former Special Forces (LOK). SINN 2026 finalist and selected for the G4 Ventures "G4 Friends" program. Every order lands directly with the founder, and every report is reviewed before delivery.</p>
-  </section>
-
-  <section class="terms">
-    <h2>Data processing terms (summary)</h2>
+<!-- ============ 9 · TERMS (DPA-LITE) ============ -->
+<section class="sec terms-sec" aria-labelledby="terms-h">
+  <div class="wrap">
+    <p class="eyebrow"><span class="tick" aria-hidden="true"></span>DATA PROCESSING TERMS</p>
+    <h2 id="terms-h">Data processing terms (summary)</h2>
     <p>Documents submitted in private mode are processed exclusively in volatile memory for the duration of the analysis and are irreversibly destroyed upon completion. No document, extract, or derivative copy is written to persistent storage at any point. Reports are generated from the analysis output only.</p>
     <p>Submitted documents should be redacted or synthetic at this engagement level. Analysis of unredacted confidential material is available under a signed Data Processing Agreement — request it by email. Reports are advisory in nature and do not constitute legal advice or a regulatory determination.</p>
-  </section>
+  </div>
+</section>
 
-</div>
+</main>
 
-<footer>
-  <span>© 2026 EUROQUANT</span>
-  <span><a href="mailto:george@euroquant.io">GEORGE@EUROQUANT.IO</a> · <a href="https://www.linkedin.com/company/euroquant">LINKEDIN</a> · DEFENSETECH / GOVTECH / DEEPTECH · CEE &amp; BALTICS</span>
+<!-- ============ 10 · FOOTER ============ -->
+<footer class="footer">
+  <div class="wrap">
+    <span>© 2026 EUROQUANT</span>
+    <span><a href="mailto:george@euroquant.io">GEORGE@EUROQUANT.IO</a> · <a href="https://www.linkedin.com/company/euroquant">LINKEDIN</a></span>
+    <span>DEFENSETECH / GOVTECH / DEEPTECH · CEE &amp; BALTICS</span>
+  </div>
 </footer>
 
 <script>
-  document.getElementById('order-btn').href = STRIPE_PAYMENT_LINK;
-  document.getElementById('demo-btn').href = DEMO_URL;
+  document.querySelectorAll('[data-stripe]').forEach(a => a.href = STRIPE_PAYMENT_LINK);
+  document.querySelectorAll('[data-demo]').forEach(a => a.href = DEMO_URL);
+
+  /* single specimen reveal — respects prefers-reduced-motion via CSS */
+  const sheet = document.querySelector('.sheet');
+  if ('IntersectionObserver' in window && sheet) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { sheet.classList.add('in'); io.disconnect(); } });
+    }, { threshold: 0, rootMargin: '0px 0px -80px 0px' });
+    io.observe(sheet);
+  } else if (sheet) {
+    sheet.classList.add('in');
+  }
 </script>
 </body>
 </html>
