@@ -8,7 +8,7 @@ Version: 1.0.0
 Brand identity compliance:
   • Colors:     Terminal Canvas #080c14, Card #0d1420, Primary #003399
   • Severity:   CRITICAL #ff3b3b, HIGH #ff8c00, MEDIUM #ffb700, CLEAR #00c896
-  • Typography: Space Grotesk (display) + DM Mono (data)
+  • Typography: IBM Plex Sans (display) + DM Mono (data)
                 Falls back to Helvetica + Courier if fonts not embedded.
 
 GDPR Article 22 compliance (Schufa v. CJEU C-634/21):
@@ -93,15 +93,16 @@ FONT_DISPLAY_BOLD = "Helvetica-Bold"
 FONT_MONO    = "Courier"
 FONT_MONO_BOLD = "Courier-Bold"
 
-# Attempt to register Space Grotesk + DM Mono if available
-# Production: ship the .ttf files in /fonts/ and register here
+# Attempt to register IBM Plex Sans + DM Mono if available
+# Production: ship the .ttf files in /fonts/ and register here.
+# (IBM Plex Sans adopted 12 Jun 2026 — Blueprint §10; replaced Space Grotesk.)
 _FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
 try:
-    if os.path.exists(os.path.join(_FONT_DIR, "SpaceGrotesk-Regular.ttf")):
-        pdfmetrics.registerFont(TTFont("SpaceGrotesk", os.path.join(_FONT_DIR, "SpaceGrotesk-Regular.ttf")))
-        pdfmetrics.registerFont(TTFont("SpaceGrotesk-Bold", os.path.join(_FONT_DIR, "SpaceGrotesk-Bold.ttf")))
-        FONT_DISPLAY = "SpaceGrotesk"
-        FONT_DISPLAY_BOLD = "SpaceGrotesk-Bold"
+    if os.path.exists(os.path.join(_FONT_DIR, "IBMPlexSans-Regular.ttf")):
+        pdfmetrics.registerFont(TTFont("IBMPlexSans", os.path.join(_FONT_DIR, "IBMPlexSans-Regular.ttf")))
+        pdfmetrics.registerFont(TTFont("IBMPlexSans-Bold", os.path.join(_FONT_DIR, "IBMPlexSans-Bold.ttf")))
+        FONT_DISPLAY = "IBMPlexSans"
+        FONT_DISPLAY_BOLD = "IBMPlexSans-Bold"
     if os.path.exists(os.path.join(_FONT_DIR, "DMMono-Regular.ttf")):
         pdfmetrics.registerFont(TTFont("DMMono", os.path.join(_FONT_DIR, "DMMono-Regular.ttf")))
         pdfmetrics.registerFont(TTFont("DMMono-Bold", os.path.join(_FONT_DIR, "DMMono-Medium.ttf")))

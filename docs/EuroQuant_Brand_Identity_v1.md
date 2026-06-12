@@ -50,16 +50,16 @@ The UI uses 4 distinct dark layers, not 3. This was amended from the original br
 ### Two Typefaces, Three Roles
 | Typeface | Role | Usage |
 |---|---|---|
-| **Space Grotesk** | Display / Body | Section headings, subject names, body copy, readable prose. Weight 400 (body), 600–700 (display/hero). |
+| **IBM Plex Sans** | Display / Body | Section headings, subject names, body copy, readable prose. Weight 400 (body), 600–700 (display/hero). |
 | **DM Mono** | Data / System | All machine-generated output: scores, IDs, hex hashes, timestamps, badge labels, section tags, metadata. Always monospaced. |
 
 ### Type Scale
 | Element | Font | Size | Weight | Color |
 |---|---|---|---|---|
-| Hero / Cover title | Space Grotesk | 38px | 700 | `#f0f4ff` |
-| Section heading | Space Grotesk | 22px | 600 | `#f0f4ff` |
-| Subject name (H1) | Space Grotesk | 26px | 600 | `#f0f4ff` |
-| Body text | Space Grotesk | 13.5px | 400 | `#8899aa` |
+| Hero / Cover title | IBM Plex Sans | 38px | 700 | `#f0f4ff` |
+| Section heading | IBM Plex Sans | 22px | 600 | `#f0f4ff` |
+| Subject name (H1) | IBM Plex Sans | 26px | 600 | `#f0f4ff` |
+| Body text | IBM Plex Sans | 13.5px | 400 | `#8899aa` |
 | Section tag label | DM Mono | 9px | 400 | `#2d3a50` — uppercase, letter-spacing 0.2em |
 | Badge / chip label | DM Mono | 10px | 700 | varies by severity |
 | Data value (large) | DM Mono | 42px | 700 | varies by severity |

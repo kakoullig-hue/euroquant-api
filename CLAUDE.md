@@ -164,7 +164,7 @@ These are the known issues. Work on them in this order:
   - Accent: `#00F0FF` (Cyan — small elements only)
   - Text: `#e2e8f0`
   - Bright: `#f0f4ff`
-- Fonts: `Space Grotesk` (display/body) + `DM Mono` (all data/scores/hashes)
+- Fonts: `IBM Plex Sans` (display/body) + `DM Mono` (all data/scores/hashes)
 - UX copy rules: "Ingest for Analysis" NOT "Upload", "EPHEMERAL MODE · ACTIVE" NOT "Processing..."
 
 ### General

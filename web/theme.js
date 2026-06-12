@@ -22,14 +22,12 @@ export const C = {
   clear:    "#00c896",   // No flags, GI < 40
 };
 
-// ── Display face experiment (design-v2) ────────────────────────────────
-// Blueprint §10 production face: "Space Grotesk". Candidate under review:
-// "IBM Plex Sans" (ui-ux-pro-max "Financial Trust" pairing). Flip the
-// constant to compare — one line, fully reversible. DM Mono stays for ALL
-// data regardless. ⚠ Adopting the candidate is a brand change: it must be
-// written into Blueprint §10 and propagated to the store (web/index.html)
-// and pdf_generator.py embedded fonts — never diverge silently.
-const DISPLAY_FACE = "Space Grotesk";
+// ── Display face ────────────────────────────────────────────────────────
+// "IBM Plex Sans" adopted 12 Jun 2026 (ui-ux-pro-max "Financial Trust"
+// pairing) — written into Blueprint §10 and propagated to the store
+// (web/index.html) and pdf_generator.py. DM Mono stays for ALL data.
+// Changing this constant is a brand change: move all three surfaces together.
+const DISPLAY_FACE = "IBM Plex Sans";
 
 export const FONT_DISPLAY = `'${DISPLAY_FACE}', 'Poppins', sans-serif`;
 export const FONT_MONO    = "'DM Mono', 'JetBrains Mono', monospace";
