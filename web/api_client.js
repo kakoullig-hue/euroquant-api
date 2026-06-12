@@ -1,18 +1,27 @@
 // ═══════════════════════════════════════════════════════════════════════
-// EuroQuant API Client
-// Connects the dashboard UI to the FastAPI Gateway (Mission 5)
+// EuroQuant API Client — Track C
+// Connects the Risk Terminal UI to the live FastAPI gateway on Render.
+//
+// Configuration is env-only (web/.env.local, never committed):
+//   VITE_API_BASE — gateway origin, defaults to the live deployment
+//   VITE_API_KEY  — X-API-Key header value; without it the UI runs demo-only
 // ═══════════════════════════════════════════════════════════════════════
 
-// Configuration — override via env / config in production deployment
-const API_BASE = import.meta.env?.VITE_API_BASE || "http://localhost:8000";
-const API_KEY  = import.meta.env?.VITE_API_KEY  || "dev-replace-with-real-key";
+export const API_BASE =
+  import.meta.env?.VITE_API_BASE || "https://euroquant-api.onrender.com";
+
+const API_KEY = import.meta.env?.VITE_API_KEY || "";
+
+export function hasApiKey() {
+  return API_KEY.length > 0;
+}
 
 /**
- * Analyze a PDF document via the Jarvis engine.
+ * Analyze a PDF document via the Jarvis engine — POST /api/v1/analyze.
  *
- * @param {File} file - PDF file from <input type="file"> or drag-drop
- * @param {Object} options - optional callbacks
- * @param {Function} options.onProgress - called with elapsed seconds
+ * @param {File} file - PDF from <input type="file"> or drag-drop
+ * @param {Object} options
+ * @param {Function} options.onProgress - called with elapsed seconds (0.1s tick)
  * @returns {Promise<{request_id, elapsed_ms, result}>}
  */
 export async function analyzePdf(file, options = {}) {
@@ -22,15 +31,17 @@ export async function analyzePdf(file, options = {}) {
   if (!file.name.toLowerCase().endsWith(".pdf")) {
     throw new Error("Only PDF files are supported");
   }
-  // Mirror the API's 50MB ceiling on the client side for fast feedback
+  // Mirror the API's 50MB ceiling client-side for fast feedback
   if (file.size > 50 * 1024 * 1024) {
     throw new Error(`File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB exceeds 50MB`);
+  }
+  if (!hasApiKey()) {
+    throw new Error("No API key configured — set VITE_API_KEY in web/.env.local, or use the demo analysis");
   }
 
   const formData = new FormData();
   formData.append("file", file);
 
-  // Optional progress tick for UI countdown
   let progressTimer;
   if (onProgress) {
     const started = Date.now();
@@ -55,7 +66,6 @@ export async function analyzePdf(file, options = {}) {
         detail = `HTTP ${response.status} ${response.statusText}`;
       }
 
-      // Specific error code messaging
       if (response.status === 401) throw new Error("Missing API key — check your environment configuration");
       if (response.status === 403) throw new Error("Invalid API key — contact your administrator");
       if (response.status === 413) throw new Error(`File too large: ${detail}`);
@@ -66,21 +76,19 @@ export async function analyzePdf(file, options = {}) {
       throw new Error(detail);
     }
 
-    const body = await response.json();
-    return body;
+    return await response.json();
   } finally {
     if (progressTimer) clearInterval(progressTimer);
   }
 }
 
 /**
- * Fetch the branded PDF report the gateway cached during a prior /analyze
- * call — GET /api/v1/report/{request_id}. No re-upload needed: the source
- * document is already gone (ephemeral by design), but the rendered report
- * is held in-memory until the process restarts.
+ * Fetch the branded PDF report cached by the gateway during /analyze —
+ * GET /api/v1/report/{request_id}. The source document is already gone
+ * (ephemeral by design); only the rendered report is held in memory.
  *
- * @param {string} requestId - request_id returned by analyzePdf()
- * @returns {Promise<Blob>} - PDF blob, ready to save or open
+ * @param {string} requestId
+ * @returns {Promise<Blob>}
  */
 export async function downloadReport(requestId) {
   if (!requestId) throw new Error("No request_id provided");
@@ -105,9 +113,7 @@ export async function downloadReport(requestId) {
   return await response.blob();
 }
 
-/**
- * Trigger download of a PDF blob in the browser.
- */
+/** Trigger a browser download of a PDF blob. */
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -120,11 +126,15 @@ export function downloadBlob(blob, filename) {
 }
 
 /**
- * Health check — used to decide whether to show "API unavailable" warning.
+ * Health check — GET /api/health (no auth). Render free tier cold-starts,
+ * so allow a generous window before declaring the API offline.
  */
 export async function checkApiHealth() {
   try {
-    const response = await fetch(`${API_BASE}/api/health`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 45_000);
+    const response = await fetch(`${API_BASE}/api/health`, { signal: controller.signal });
+    clearTimeout(timer);
     if (!response.ok) return { ok: false, status: response.status };
     return { ok: true, ...(await response.json()) };
   } catch (e) {

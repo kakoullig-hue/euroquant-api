@@ -311,7 +311,7 @@ class RiskExtractionResult(BaseModel):      # audit envelope
 | MEDIUM | `#ffb700` | D-3, indirect procurement, FATF elevated |
 | CLEAR | `#00c896` | No flags, GI < 40 |
 
-**Typography:** **Space Grotesk** display/body (production) / Poppins fallback · **DM Mono** για ΟΛΑ τα data (scores, IDs, hashes, timestamps, badges). Section labels: DM Mono 8px uppercase, letter-spacing 0.2em. Hero titles: display 700, `#f0f4ff`.
+**Typography:** **IBM Plex Sans** display/body (production, adopted 12 Jun 2026 — ui-ux-pro-max "Financial Trust" pairing; replaced Space Grotesk) / Poppins fallback · **DM Mono** για ΟΛΑ τα data (scores, IDs, hashes, timestamps, badges). Section labels: DM Mono 8px uppercase, letter-spacing 0.2em. Hero titles: display 700, `#f0f4ff`.
 
 **Animations:** Cards `fadeUp` 500ms staggered 50–300ms · GI count-up 1600ms (300ms delay) · percentile count-up 1400ms (600ms delay) · verdict card `pulse` 2.5s infinite.
 
@@ -326,7 +326,7 @@ class RiskExtractionResult(BaseModel):      # audit envelope
 | Audit | "SHA-256: {hash} · Processed {timestamp}" | "File analyzed" |
 | Timer | "Jarvis Engine · {Xs elapsed}" | "Loading..." |
 
-**PDF report state (current):** `pdf_generator.py` = ReportLab-based, **legibility fix εφαρμοσμένο** — deep gradient canvas (`#0b1322`→`#070b13`) + brightened print tokens (COL_MUTED→`#7f90ab`, COL_SUB→`#aab6c9`) + embedded fonts (SpaceGrotesk→Poppins→Helvetica, DM Mono για mono). `_safe()` glyph sanitizer strip-άρει emoji που render-άρουν ως μαύρα κουτάκια. Risk flags severity by index (0–1 CRITICAL, 2–3 HIGH, 4+ MEDIUM).
+**PDF report state (current):** `pdf_generator.py` = ReportLab-based, **legibility fix εφαρμοσμένο** — deep gradient canvas (`#0b1322`→`#070b13`) + brightened print tokens (COL_MUTED→`#7f90ab`, COL_SUB→`#aab6c9`) + embedded fonts (IBMPlexSans→Helvetica, DM Mono για mono). `_safe()` glyph sanitizer strip-άρει emoji που render-άρουν ως μαύρα κουτάκια. Risk flags severity by index (0–1 CRITICAL, 2–3 HIGH, 4+ MEDIUM).
 > *Long-term preference:* Playwright/Chromium ή HTML-first για max brand fidelity — αλλά το reportlab build είναι πλέον acceptable production post-fix.
 
 ---
@@ -564,7 +564,7 @@ LOG_LEVEL=INFO
 - Fulfillment: **manual** through the live API (~30 min/order). Full reference: `ASYNC_REVENUE_TRACK.md`.
 - **Automation gate:** Stripe webhook → API → auto-delivery is built **only at the 3rd paid order**. Until then, manual fulfillment. (No engineering before validation.)
 
-**Site source:** single-file `euroquant_sample_report.html` (deployed as `index.html`). Two setup constants at top: `STRIPE_PAYMENT_LINK` (LIVE) + `DEMO_URL`. Includes OG/Twitter meta, favicon, trust section (founder + SINN + G4), embedded DPA-lite summary. Brand-locked: navy `#001B52`, Space Grotesk / IBM Plex. **No stack names, no benchmark claims, no absolute guarantees on the page** (Brand Pack rules enforced).
+**Site source:** single-file `euroquant_sample_report.html` (deployed as `index.html`). Two setup constants at top: `STRIPE_PAYMENT_LINK` (LIVE) + `DEMO_URL`. Includes OG/Twitter meta, favicon, trust section (founder + SINN + G4), embedded DPA-lite summary. Brand-locked: navy `#001B52`, IBM Plex Sans / IBM Plex Mono. **No stack names, no benchmark claims, no absolute guarantees on the page** (Brand Pack rules enforced).
 
 **Distribution asset:** `euroquant_linkedin_thumbnail.png` (1200×627) for LinkedIn Featured + future milestone post.
 
@@ -586,6 +586,7 @@ LOG_LEVEL=INFO
 - **Claude Code** manages the repo and files directly. **Claude.ai Project Knowledge** stays lean (4–5 canonical files); sync rule: **the repo is edited first**, Project Knowledge mirrors only canonical docs.
 - **Obsidian (optional):** open the repo folder as a vault for reading/notes — same files, no duplication.
 - **Sync rule:** anything that changes architecture/schema/strategy → update this Blueprint in the repo, bump version, then mirror to Project Knowledge.
+- **PDF brand fonts must ship in `api/fonts/` + Docker image (Dockerfile `COPY . .` includes them) — verified 12 Jun 2026** (report renders IBM Plex Sans + DM Mono, zero Helvetica-drawn glyphs).
 
 ---
 

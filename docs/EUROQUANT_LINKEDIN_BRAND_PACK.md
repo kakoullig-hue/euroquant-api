@@ -46,10 +46,10 @@
 
 ## 3 · BRAND ASSETS (this session)
 
-- **Personal banner:** 1584×396 · dark navy→canvas gradient · Poppins (Space Grotesk fallback) · cyan accent only on small elements · subtle network motif right.
+- **Personal banner:** 1584×396 · dark navy→canvas gradient · Poppins (IBM Plex Sans fallback) · cyan accent only on small elements · subtle network motif right.
 - **Company cover:** 1128×191 · hero network/pathway graph (severity palette: PEP red, clear green, medium amber, steel) · radar scan rings · text at x≈292 to clear the company-logo overlap (logo eats left ~220px — confirmed live).
 - **Avatar — DECIDED: stacked "Euro / Quant" wordmark** (readable full name, survives circular crop, navy glow + faint scan rings + cyan tick). Rationale: at zero brand equity the mark should reinforce the name. **Monogram "EQ" = future**, once recognition is earned. Full horizontal wordmark rejected (clips in circular crop).
-- **Palette / type:** per `EuroQuant_Brand_Identity_v1.md` — Institutional Navy `#001B52` brand-on-white, Primary `#003399`, Cyan `#00F0FF` accent only (max 8px), Space Grotesk / DM Mono.
+- **Palette / type:** per `EuroQuant_Brand_Identity_v1.md` — Institutional Navy `#001B52` brand-on-white, Primary `#003399`, Cyan `#00F0FF` accent only (max 8px), IBM Plex Sans / DM Mono.
 
 ---
 
