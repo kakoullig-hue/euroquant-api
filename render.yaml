@@ -31,8 +31,12 @@ services:
   - type: web
     name: euroquant-demo
     runtime: static
-    buildCommand: echo "static"
-    staticPublishPath: web
+    # Demo-only build: vite.config.js hard-fails if VITE_API_KEY is present,
+    # so this bundle can never embed a gateway key. Root serves the Risk
+    # Terminal demo (dashboard.html copied to index.html — DEMO_URL points
+    # at the bare domain).
+    buildCommand: cd web && npm ci && npm run build && cp dist/dashboard.html dist/index.html
+    staticPublishPath: web/dist
     headers:
       - path: /*
         name: Cache-Control
