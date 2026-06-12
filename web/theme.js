@@ -22,7 +22,16 @@ export const C = {
   clear:    "#00c896",   // No flags, GI < 40
 };
 
-export const FONT_DISPLAY = "'Space Grotesk', 'Poppins', sans-serif";
+// ── Display face experiment (design-v2) ────────────────────────────────
+// Blueprint §10 production face: "Space Grotesk". Candidate under review:
+// "IBM Plex Sans" (ui-ux-pro-max "Financial Trust" pairing). Flip the
+// constant to compare — one line, fully reversible. DM Mono stays for ALL
+// data regardless. ⚠ Adopting the candidate is a brand change: it must be
+// written into Blueprint §10 and propagated to the store (web/index.html)
+// and pdf_generator.py embedded fonts — never diverge silently.
+const DISPLAY_FACE = "Space Grotesk";
+
+export const FONT_DISPLAY = `'${DISPLAY_FACE}', 'Poppins', sans-serif`;
 export const FONT_MONO    = "'DM Mono', 'JetBrains Mono', monospace";
 
 // Shared a11y guard — components snap animations to their end state when set.
@@ -61,17 +70,21 @@ export const badge = (color, bg) => ({
   color,
   background: bg || color + "16",
   border: `1px solid ${color}44`,
-  padding: "3px 9px",
+  padding: "4px 8px",
   borderRadius: 4,
   fontWeight: 500,
   whiteSpace: "nowrap",
 });
 
+// Card padding tiers (4/8px rhythm): default "20px 24px", compact rows
+// pass PAD_COMPACT. Don't invent per-card values.
+export const PAD_COMPACT = "16px 20px";
+
 export const card = (extra = {}) => ({
   background: C.card,
   border: `1px solid ${C.border}`,
   borderRadius: 10,
-  padding: "20px 22px",
+  padding: "20px 24px",
   ...extra,
 });
 
@@ -126,8 +139,12 @@ const GLOBAL_CSS = `
   .eq-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
 
   .eq-tab { transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease; }
+  /* !important beats the inline idle styles; scoped so the active tab keeps its Primary Blue fill */
+  .eq-tab:not(.eq-tab-active):hover { color: ${C.text} !important; border-color: ${C.muted} !important; }
+  .eq-tab:active { transform: translateY(1px); }
 
   .eq-focus:focus-visible { outline: 2px solid #4a90d9; outline-offset: 3px; }
+  button:focus-visible { outline: 2px solid #4a90d9; outline-offset: 2px; }
 
   @media (prefers-reduced-motion: reduce) {
     .eq-fade { animation: none; opacity: 1; }

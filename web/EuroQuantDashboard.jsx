@@ -173,7 +173,7 @@ function GaugeArc({ value, size = 210 }) {
 function PathwayRow({ distance, label, role, active }) {
   const c = DISTANCE_COLOR[distance] || C.sub;
   return (
-    <div className="eq-row-hover" style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "9px 6px", borderRadius: 6 }}>
+    <div className="eq-row-hover" style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "8px 8px", borderRadius: 6 }}>
       <span style={{ width: 8, height: 8, borderRadius: "50%", background: c, marginTop: 5, boxShadow: `0 0 8px ${c}`, flexShrink: 0 }} />
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 12, fontFamily: FONT_MONO, color: C.text, fontWeight: 500 }}>
@@ -182,7 +182,7 @@ function PathwayRow({ distance, label, role, active }) {
         </div>
         <div style={{ fontSize: 10, color: C.sub, marginTop: 2, lineHeight: 1.45 }}>{role}</div>
       </div>
-      <span style={{ marginLeft: "auto", flexShrink: 0, fontSize: 9, color: c, fontFamily: FONT_MONO, border: `1px solid ${c}33`, padding: "2px 7px", borderRadius: 3 }}>
+      <span style={{ marginLeft: "auto", flexShrink: 0, fontSize: 9, color: c, fontFamily: FONT_MONO, border: `1px solid ${c}33`, padding: "2px 8px", borderRadius: 3 }}>
         D-{distance}
       </span>
     </div>
@@ -422,8 +422,8 @@ function DistanceLegend() {
   return (
     <>
       {rows.map(([d, c, lbl, desc]) => (
-        <div key={d} style={{ display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" }}>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: c + "1a", border: `1px solid ${c}55`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div key={d} style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "flex-start" }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: c + "1a", border: `1px solid ${c}55`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <span style={{ fontSize: 11, fontFamily: FONT_MONO, color: c, fontWeight: 500 }}>{d}</span>
           </div>
           <div>
@@ -509,11 +509,11 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
         {data.used_ocr_fallback ? " · OCR FALLBACK" : ""}
       </div>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "26px 24px 0" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 24px 0" }}>
 
         {/* ── Subject header ── */}
         <div className="eq-fade" style={{ "--d": "50ms", marginBottom: 24 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
               <div style={D.label}>Due Diligence Subject</div>
               <h1 style={D.subjectName}>{p.full_name}</h1>
@@ -533,9 +533,9 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
                 background: riskLevel.bg,
                 border: `1px solid ${riskLevel.color}44`,
                 borderRadius: 10,
-                padding: "14px 24px",
+                padding: "16px 24px",
                 textAlign: "center",
-                minWidth: 150,
+                minWidth: 160,
               }}
             >
               <div style={{ fontSize: 8, fontFamily: FONT_MONO, color: riskLevel.color, letterSpacing: "0.2em", marginBottom: 4 }}>JARVIS VERDICT</div>
@@ -548,8 +548,8 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
         </div>
 
         {/* ── Score row ── */}
-        <div className="eq-fade" style={{ "--d": "120ms", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-          <div className="eq-card-hover" style={{ ...card({ padding: "18px 22px 16px" }), gridColumn: "span 2", display: "flex", flexDirection: "column" }}>
+        <div className="eq-fade" style={{ "--d": "120ms", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+          <div className="eq-card-hover" style={{ ...card({ padding: "20px 24px 16px" }), gridColumn: "span 2", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", width: "100%" }}>
               <span style={D.label}>Governance Intensity Score</span>
               <span style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, letterSpacing: "0.1em" }}>
@@ -560,7 +560,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
               <GaugeArc value={p.governance_intensity} size={210} />
             </div>
             {/* Regime strip — active regime highlighted; text + color, never color alone */}
-            <div style={{ display: "flex", gap: 6, width: "100%", marginTop: 2 }}>
+            <div style={{ display: "flex", gap: 8, width: "100%", marginTop: 4 }}>
               {GI_ZONES.map((z) => {
                 const active = z === (GI_ZONES.find((x) => p.governance_intensity < x.to) || GI_ZONES[2]);
                 return (
@@ -607,7 +607,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
             </div>
           </div>
 
-          <div className="eq-card-hover" style={{ ...card(), display: "flex", flexDirection: "column", gap: 13 }}>
+          <div className="eq-card-hover" style={{ ...card(), display: "flex", flexDirection: "column", gap: 12 }}>
             {[
               ["Confidence", `${(data.extraction_confidence * 100).toFixed(0)}%`, C.steel],
               ["Procurement", fmt(totalProcurement), C.high],
@@ -619,7 +619,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
                 <span style={{ fontSize: 13, fontFamily: FONT_MONO, color: col, fontWeight: 500 }}>{val}</span>
               </div>
             ))}
-            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 11, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 10, color: C.sub }}>Neo4j</span>
               <span style={{ fontSize: 10, fontFamily: FONT_MONO, color: data.neo4j_persisted ? C.clear : C.medium }}>
                 {data.neo4j_persisted ? "● PERSISTED" : "○ LOCAL"}
@@ -629,9 +629,9 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
         </div>
 
         {/* ── Tabs — active state Primary Blue (Blueprint §10) ── */}
-        <div className="eq-fade" style={{ "--d": "180ms", display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        <div className="eq-fade" style={{ "--d": "180ms", display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
           {["overview", "companies", "connections", "network", "flags"].map((t) => (
-            <button key={t} className="eq-tab" style={D.tab(activeTab === t)} onClick={() => setActiveTab(t)}>
+            <button key={t} className={`eq-tab${activeTab === t ? " eq-tab-active" : ""}`} style={D.tab(activeTab === t)} onClick={() => setActiveTab(t)}>
               {t.toUpperCase()}
             </button>
           ))}
@@ -641,7 +641,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
         <div className="eq-fade" style={{ "--d": "240ms" }}>
 
           {activeTab === "overview" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div className="eq-card-hover" style={{ ...card({ borderLeft: `3px solid ${riskLevel.color}` }), gridColumn: "span 2" }}>
                 <div style={D.sectionTitle}>Analyst Assessment</div>
                 <p style={{ fontSize: 12.5, lineHeight: 1.75, color: C.sub, margin: 0 }}>{p.analyst_notes}</p>
@@ -653,7 +653,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
                   {(data.reference_check?.sources_checked || []).map((src) => {
                     const st = sourceStatus(src);
                     return (
-                      <div key={src} className="eq-row-hover" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 6px", borderRadius: 6 }}>
+                      <div key={src} className="eq-row-hover" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 8px", borderRadius: 6 }}>
                         <span style={{ fontSize: 11, fontFamily: FONT_MONO, color: C.sub }}>{src}</span>
                         <span style={badge(st.color)}>{st.label}</span>
                       </div>
@@ -661,7 +661,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
                   })}
                 </div>
                 {(data.reference_check?.errors || []).map((err, i) => (
-                  <div key={i} style={{ marginTop: 12, padding: "9px 12px", background: `${C.medium}0c`, border: `1px solid ${C.medium}26`, borderRadius: 6, fontSize: 10, color: C.sub, lineHeight: 1.5 }}>
+                  <div key={i} style={{ marginTop: 12, padding: "8px 12px", background: `${C.medium}0c`, border: `1px solid ${C.medium}26`, borderRadius: 6, fontSize: 10, color: C.sub, lineHeight: 1.5 }}>
                     {err}
                   </div>
                 ))}
@@ -671,7 +671,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
                 <div style={D.sectionTitle}>Score Decomposition</div>
                 {factors.map(([lbl, val, max, col]) => (
                   <div key={lbl} style={{ marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                       <span style={{ fontSize: 10, color: C.sub }}>{lbl}</span>
                       <span style={{ fontSize: 10, fontFamily: FONT_MONO, color: col }}>{val}/{max}</span>
                     </div>
@@ -680,7 +680,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
                     </div>
                   </div>
                 ))}
-                <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, letterSpacing: "0.1em", marginTop: 6 }}>
+                <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, letterSpacing: "0.1em", marginTop: 8 }}>
                   INDICATIVE FACTOR DECOMPOSITION
                 </div>
               </div>
@@ -688,7 +688,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
           )}
 
           {activeTab === "companies" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {p.associated_companies.map((c, i) => {
                 const rail = c.is_offshore_flag ? C.high : !c.active_status ? C.muted : FATF_COLORS[c.fatf_risk_level] || C.border;
                 const v = verifications.find((x) => x.company_name === c.company_name);
@@ -702,7 +702,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
                         {!c.active_status && <span style={badge(C.muted)}>DISSOLVED</span>}
                         {v && !v.verified && <span style={badge(C.medium)}>UNVERIFIED</span>}
                       </div>
-                      <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
                         {[
                           ["COUNTRY", c.registration_country, C.sub],
                           ["STAKE", `${c.share_percentage}%`, C.sub],
@@ -729,7 +729,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
           )}
 
           {activeTab === "connections" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div className="eq-card-hover" style={card()}>
                 <div style={D.sectionTitle}>Political Network</div>
                 {p.political_connections.map((pc, i) => (
@@ -745,8 +745,8 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
               <div className="eq-card-hover" style={card()}>
                 <div style={D.sectionTitle}>Pathway Distance</div>
                 <DistanceLegend />
-                <div style={{ marginTop: 14, padding: "10px 13px", background: C.canvas, borderRadius: 8, border: `1px solid ${C.border}` }}>
-                  <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, marginBottom: 6, letterSpacing: "0.2em" }}>NEO4J GRAPH</div>
+                <div style={{ marginTop: 16, padding: "12px 12px", background: C.canvas, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, marginBottom: 8, letterSpacing: "0.2em" }}>NEO4J GRAPH</div>
                   <div style={{ fontSize: 11, color: C.sub, fontFamily: FONT_MONO }}>
                     {p.political_connections.filter((c) => c.pathway_distance === 1).length} direct ·{" "}
                     {p.political_connections.filter((c) => c.pathway_distance > 1).length} indirect ·{" "}
@@ -758,7 +758,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
           )}
 
           {activeTab === "network" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16 }}>
               <div className="eq-card-hover" style={card()}>
                 <div style={D.sectionTitle}>Neo4j Pathway Graph</div>
                 <div style={{ fontSize: 9, color: "#56657f", fontFamily: FONT_MONO, letterSpacing: "0.1em", marginBottom: 8 }}>
@@ -774,10 +774,10 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
               <div className="eq-card-hover" style={card()}>
                 <div style={D.sectionTitle}>Distance Legend</div>
                 <DistanceLegend />
-                <div style={{ marginTop: 14, padding: "10px 13px", background: C.canvas, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                <div style={{ marginTop: 16, padding: "12px 12px", background: C.canvas, borderRadius: 8, border: `1px solid ${C.border}` }}>
                   <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, marginBottom: 8, letterSpacing: "0.2em" }}>NODE KEY</div>
                   {[[C.primary, "Subject (larger radius)"], [C.critical, "PEP — always red"], [C.high, "Offshore vehicle"], [C.steel, "Company"], [C.clear, "Non-PEP contact"]].map(([col, lbl]) => (
-                    <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 6 }}>
+                    <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: col, flexShrink: 0 }} />
                       <span style={{ fontSize: 10, color: C.sub }}>{lbl}</span>
                     </div>
@@ -788,12 +788,12 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
           )}
 
           {activeTab === "flags" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {p.risk_flags.map((flag, i) => {
                 const sev = flagSeverity(i);
                 return (
-                  <div key={i} className="eq-card-hover" style={{ ...card({ borderLeft: `3px solid ${sev.color}`, padding: "16px 18px" }), display: "flex", gap: 14, alignItems: "flex-start" }}>
-                    <div style={{ minWidth: 74 }}>
+                  <div key={i} className="eq-card-hover" style={{ ...card({ borderLeft: `3px solid ${sev.color}`, padding: "16px 20px" }), display: "flex", gap: 16, alignItems: "flex-start" }}>
+                    <div style={{ minWidth: 80 }}>
                       <span style={badge(sev.color)}>{sev.label}</span>
                     </div>
                     <p style={{ fontSize: 11.5, lineHeight: 1.65, color: C.sub, margin: 0 }}>{flag}</p>
@@ -802,7 +802,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
               })}
               <div style={{ ...card({ borderColor: `${C.steel}33`, marginTop: 8 }) }}>
                 <div style={D.sectionTitle}>Processing Metadata</div>
-                <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
                   {[
                     ["EXTRACTOR", data.extractor_version],
                     ["CONFIDENCE", `${(data.extraction_confidence * 100).toFixed(0)}%`],
@@ -812,7 +812,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
                   ].map(([l, val]) => (
                     <div key={l}>
                       <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, letterSpacing: "0.15em" }}>{l}</div>
-                      <div style={{ fontSize: 11, fontFamily: FONT_MONO, color: C.sub, marginTop: 3 }}>{val}</div>
+                      <div style={{ fontSize: 11, fontFamily: FONT_MONO, color: C.sub, marginTop: 4 }}>{val}</div>
                     </div>
                   ))}
                 </div>
@@ -842,7 +842,7 @@ const D = {
   },
   topbar: {
     borderBottom: `1px solid ${C.border}`,
-    padding: "13px 32px",
+    padding: "12px 32px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -862,7 +862,7 @@ const D = {
     color: C.muted,
     background: "#0a0f1a",
     borderBottom: `1px solid ${C.border}`,
-    padding: "7px 32px",
+    padding: "8px 32px",
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -873,7 +873,7 @@ const D = {
     letterSpacing: "0.2em",
     color: C.muted,
     textTransform: "uppercase",
-    marginBottom: 7,
+    marginBottom: 8,
   },
   subjectName: {
     fontSize: 28,
@@ -889,8 +889,8 @@ const D = {
     letterSpacing: "0.2em",
     color: C.muted,
     textTransform: "uppercase",
-    marginBottom: 14,
-    paddingBottom: 9,
+    marginBottom: 16,
+    paddingBottom: 8,
     borderBottom: `1px solid ${C.border}`,
   },
   tab: (active) => ({
@@ -900,7 +900,7 @@ const D = {
     color: active ? C.bright : C.muted,
     background: active ? C.primary : "transparent",
     border: active ? `1px solid ${C.primary}` : `1px solid ${C.border}`,
-    padding: "7px 15px",
+    padding: "8px 16px",
     borderRadius: 5,
     cursor: "pointer",
   }),

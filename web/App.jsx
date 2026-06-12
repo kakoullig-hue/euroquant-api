@@ -14,7 +14,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import EuroQuantDashboard from "./EuroQuantDashboard";
 import { analyzePdf, downloadReport, downloadBlob, checkApiHealth, hasApiKey, API_BASE } from "./api_client";
 import demoData from "./demo_data_synthetic.json";
-import { C, FONT_DISPLAY, FONT_MONO, injectGlobalStyles, card, prefersReducedMotion } from "./theme";
+import { C, FONT_DISPLAY, FONT_MONO, injectGlobalStyles, card, PAD_COMPACT, prefersReducedMotion } from "./theme";
 
 injectGlobalStyles();
 
@@ -128,7 +128,7 @@ function Topbar({ right }) {
   return (
     <div style={S.topbar}>
       <Wordmark />
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>{right}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>{right}</div>
     </div>
   );
 }
@@ -334,7 +334,7 @@ function Bracket({ pos, active }) {
 
 function FeatureCard({ label, value, sub }) {
   return (
-    <div className="eq-card-hover" style={card({ padding: "18px 20px" })}>
+    <div className="eq-card-hover" style={card({ padding: PAD_COMPACT })}>
       <div style={S.featureLabel}>{label}</div>
       <div style={S.featureValue}>{value}</div>
       <div style={S.featureSub}>{sub}</div>
@@ -477,7 +477,7 @@ const S = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "14px 32px",
+    padding: "12px 32px",
     background: "#0a0f1acc",
     backdropFilter: "blur(8px)",
     borderBottom: `1px solid ${C.border}`,
@@ -528,7 +528,7 @@ const S = {
     position: "relative",
     border: `1px solid ${C.border}`,
     borderRadius: 10,
-    padding: "58px 40px",
+    padding: "56px 40px",
     textAlign: "center",
     background: C.card,
     cursor: "pointer",
@@ -586,7 +586,7 @@ const S = {
     fontSize: 10,
     letterSpacing: "0.15em",
     fontWeight: 500,
-    padding: "11px 20px",
+    padding: "12px 20px",
     borderRadius: 5,
     cursor: "pointer",
   },
@@ -600,7 +600,7 @@ const S = {
     letterSpacing: "0.15em",
     border: `1px solid ${C.cyan}26`,
     background: `${C.cyan}06`,
-    padding: "7px 13px",
+    padding: "8px 12px",
     borderRadius: 5,
   },
 
@@ -608,7 +608,7 @@ const S = {
     marginTop: 48,
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 14,
+    gap: 16,
   },
   featureLabel: {
     fontFamily: FONT_MONO,
@@ -623,7 +623,7 @@ const S = {
     fontSize: 16,
     fontWeight: 500,
     color: C.bright,
-    marginBottom: 5,
+    marginBottom: 4,
   },
   featureSub: { fontSize: 11, color: C.sub, lineHeight: 1.45 },
 
@@ -639,7 +639,7 @@ const S = {
   },
 
   // ── Processing ──
-  pulseWrap: { width: 110, height: 110, position: "relative", margin: "40px auto 36px" },
+  pulseWrap: { width: 110, height: 110, position: "relative", margin: "40px auto 32px" },
   pulseRing: {
     position: "absolute",
     inset: 0,
@@ -661,16 +661,16 @@ const S = {
     fontWeight: 500,
     margin: "0 0 8px 0",
   },
-  procFile: { fontFamily: FONT_MONO, fontSize: 11, color: C.muted, marginBottom: 36 },
+  procFile: { fontFamily: FONT_MONO, fontSize: 11, color: C.muted, marginBottom: 32 },
   stageCard: {
     position: "relative",
     overflow: "hidden",
     background: C.card,
     border: `1px solid ${C.border}`,
     borderRadius: 10,
-    padding: "22px 22px 16px",
+    padding: "20px 24px 16px",
     maxWidth: 480,
-    margin: "0 auto 28px",
+    margin: "0 auto 24px",
     textAlign: "left",
   },
   scanTrack: {
@@ -693,7 +693,7 @@ const S = {
     alignItems: "baseline",
     gap: 12,
     flexWrap: "wrap",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   logHeaderLabel: {
     fontFamily: FONT_MONO,
@@ -725,7 +725,7 @@ const S = {
     display: "flex",
     alignItems: "center",
     gap: 14,
-    padding: "9px 0",
+    padding: "8px 0",
     transition: "color 0.3s ease",
   },
   stageNum: { fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.1em" },
@@ -775,7 +775,7 @@ const S = {
     letterSpacing: "0.08em",
     border: `1px solid ${C.clear}30`,
     background: `${C.clear}0c`,
-    padding: "8px 13px",
+    padding: "8px 12px",
     borderRadius: 5,
   },
   downloadBtn: {
@@ -786,7 +786,7 @@ const S = {
     fontSize: 10,
     fontWeight: 500,
     letterSpacing: "0.12em",
-    padding: "9px 16px",
+    padding: "8px 16px",
     borderRadius: 5,
     cursor: "pointer",
   },
@@ -798,7 +798,7 @@ const S = {
     fontSize: 10,
     fontWeight: 500,
     letterSpacing: "0.12em",
-    padding: "9px 14px",
+    padding: "8px 16px",
     borderRadius: 5,
     cursor: "pointer",
   },
