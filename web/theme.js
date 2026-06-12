@@ -25,6 +25,11 @@ export const C = {
 export const FONT_DISPLAY = "'Space Grotesk', 'Poppins', sans-serif";
 export const FONT_MONO    = "'DM Mono', 'JetBrains Mono', monospace";
 
+// Shared a11y guard — components snap animations to their end state when set.
+export const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 export const SEVERITY = {
   CRITICAL: C.critical,
   HIGH:     C.high,
@@ -121,6 +126,8 @@ const GLOBAL_CSS = `
   .eq-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
 
   .eq-tab { transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease; }
+
+  .eq-focus:focus-visible { outline: 2px solid #4a90d9; outline-offset: 3px; }
 
   @media (prefers-reduced-motion: reduce) {
     .eq-fade { animation: none; opacity: 1; }

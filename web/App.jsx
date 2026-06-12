@@ -14,7 +14,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import EuroQuantDashboard from "./EuroQuantDashboard";
 import { analyzePdf, downloadReport, downloadBlob, checkApiHealth, hasApiKey, API_BASE } from "./api_client";
 import demoData from "./demo_data_synthetic.json";
-import { C, FONT_DISPLAY, FONT_MONO, injectGlobalStyles, card } from "./theme";
+import { C, FONT_DISPLAY, FONT_MONO, injectGlobalStyles, card, prefersReducedMotion } from "./theme";
 
 injectGlobalStyles();
 
@@ -179,17 +179,38 @@ function EphemeralBadge({ children }) {
 // UPLOAD SCREEN
 // ═══════════════════════════════════════════════════════════════════════
 
+// Mirrors the gateway's MAX_INGESTION_MB so oversize documents are rejected
+// before any bytes leave the browser.
+const MAX_INGESTION_MB = 50;
+
 function UploadScreen({ onAnalyze, onDemo, error, apiHealthy }) {
   const [dragOver, setDragOver] = useState(false);
+  const [rejection, setRejection] = useState(null);
   const inputRef = useRef(null);
   const keyMissing = !hasApiKey();
+
+  // Validate locally — error states must name the cause and the fix.
+  const handleFile = (f) => {
+    if (!f) return;
+    if (f.type !== "application/pdf" && !/\.pdf$/i.test(f.name)) {
+      setRejection(`"${f.name}" is not a PDF. Export the document as PDF and ingest again.`);
+      return;
+    }
+    if (f.size > MAX_INGESTION_MB * 1024 * 1024) {
+      setRejection(`"${f.name}" is ${(f.size / 1048576).toFixed(1)}MB — over the ${MAX_INGESTION_MB}MB ingestion ceiling. Compress or split the PDF and ingest again.`);
+      return;
+    }
+    setRejection(null);
+    onAnalyze(f);
+  };
 
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) onAnalyze(f);
+    handleFile(e.dataTransfer.files[0]);
   };
+
+  const shownError = error || rejection;
 
   return (
     <div style={S.root}>
@@ -207,7 +228,10 @@ function UploadScreen({ onAnalyze, onDemo, error, apiHealthy }) {
         </div>
 
         <div
-          className="eq-fade"
+          className="eq-fade eq-focus"
+          role="button"
+          tabIndex={0}
+          aria-label={`Ingest for Analysis — drop a PDF here or press Enter to select a file. Maximum ${MAX_INGESTION_MB} megabytes.`}
           style={{
             "--d": "130ms",
             ...S.dropzone,
@@ -217,29 +241,35 @@ function UploadScreen({ onAnalyze, onDemo, error, apiHealthy }) {
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
         >
           <Bracket pos="tl" active={dragOver} /><Bracket pos="tr" active={dragOver} />
           <Bracket pos="bl" active={dragOver} /><Bracket pos="br" active={dragOver} />
-          <div style={S.dropIcon}>▲</div>
+          <IngestIcon active={dragOver} />
           <div style={S.dropTitle}>{dragOver ? "Release to ingest" : "Drop PDF here, or click to select"}</div>
-          <div style={S.dropSub}>MAX 50MB · PDF ONLY · SHA-256 AUDIT ANCHOR</div>
+          <div style={S.dropSub}>MAX {MAX_INGESTION_MB}MB · PDF ONLY · SHA-256 AUDIT ANCHOR</div>
           <input
             ref={inputRef}
             type="file"
             accept="application/pdf,.pdf"
             style={{ display: "none" }}
-            onChange={(e) => { const f = e.target.files[0]; if (f) onAnalyze(f); }}
+            onChange={(e) => { handleFile(e.target.files[0]); e.target.value = ""; }}
           />
         </div>
 
-        {error && (
-          <div style={S.errorBox}>
+        {shownError && (
+          <div role="alert" style={S.errorBox}>
             <span style={S.errorLabel}>ERROR</span>
-            <span style={S.errorText}>{error}</span>
+            <span style={S.errorText}>{shownError}</span>
           </div>
         )}
 
-        {keyMissing && !error && (
+        {keyMissing && !shownError && (
           <div className="eq-fade" style={{ "--d": "180ms", ...S.noticeBox }}>
             <span style={{ ...S.errorLabel, color: C.medium }}>CONFIG</span>
             <span style={S.errorText}>
@@ -268,6 +298,24 @@ function UploadScreen({ onAnalyze, onDemo, error, apiHealthy }) {
         <span style={{ fontFamily: FONT_MONO }}>{API_BASE.replace(/^https?:\/\//, "")}</span>
       </div>
     </div>
+  );
+}
+
+// Document-with-arrow ingest glyph — vector, 1.5px stroke, consistent with
+// the terminal icon language (no text/emoji glyphs as icons).
+function IngestIcon({ active }) {
+  return (
+    <svg
+      width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+      stroke={active ? C.steel : C.sub} strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round"
+      style={{ marginBottom: 14, transition: "stroke 0.2s ease" }}
+    >
+      <path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8l-4-5Z" />
+      <path d="M14 3v5h4" />
+      <path d="M12 16.5v-6" />
+      <path d="m9.5 13 2.5-2.5L14.5 13" />
+    </svg>
   );
 }
 
@@ -305,9 +353,21 @@ const PIPELINE_STAGES = [
   ["04", "GRAPH",     "Persisting pathway network to Neo4j"],
   ["05", "BENCHMARK", "Computing market percentile"],
 ];
+// The gateway gives no per-stage telemetry, so the log advances on elapsed
+// time — a pacing estimate, not a measurement.
+const STAGE_PACING_SECONDS = 4;
+
+// Per-row status is text + glyph, never color alone.
+const STAGE_STATES = {
+  done:    { word: "DONE",    glyph: "✓", color: C.clear },
+  active:  { word: "RUNNING", glyph: "●", color: C.bright },
+  pending: { word: "QUEUED",  glyph: "○", color: C.muted },
+};
 
 function ProcessingScreen({ file, elapsed }) {
-  const stageIdx = Math.min(PIPELINE_STAGES.length - 1, Math.floor(elapsed / 4));
+  const reduced = prefersReducedMotion();
+  const stageIdx = Math.min(PIPELINE_STAGES.length - 1, Math.floor(elapsed / STAGE_PACING_SECONDS));
+  const stageCount = PIPELINE_STAGES.length;
 
   return (
     <div style={S.root}>
@@ -315,26 +375,43 @@ function ProcessingScreen({ file, elapsed }) {
 
       <div style={{ ...S.center, textAlign: "center" }}>
         <div style={S.pulseWrap}>
-          <div style={{ ...S.pulseRing, animation: "eqRing 2s ease-out infinite" }} />
-          <div style={{ ...S.pulseRing, inset: 18, animation: "eqRing 2s ease-out infinite 0.5s" }} />
-          <div style={S.pulseCore}><StatusDot color={C.cyan} pulse /></div>
+          {!reduced && (
+            <>
+              <div style={{ ...S.pulseRing, animation: "eqRing 2s ease-out infinite" }} />
+              <div style={{ ...S.pulseRing, inset: 18, animation: "eqRing 2s ease-out infinite 0.5s" }} />
+            </>
+          )}
+          {reduced && <div style={{ ...S.pulseRing, opacity: 0.5 }} />}
+          <div style={S.pulseCore}><StatusDot color={C.cyan} pulse={!reduced} /></div>
         </div>
 
         <h2 style={S.procTitle}>Jarvis Engine · {elapsed}s elapsed</h2>
         <div style={S.procFile}>{file?.name}</div>
 
         <div style={S.stageCard}>
-          <div style={S.scanTrack}><div style={S.scanBar} /></div>
+          {!reduced && <div style={S.scanTrack}><div style={S.scanBar} /></div>}
+
+          {/* Log header — explicit stage progress, announced politely */}
+          <div style={S.logHeader}>
+            <span style={S.logHeaderLabel}>EPHEMERAL EXECUTION LOG</span>
+            <span role="status" aria-live="polite" style={S.logHeaderStage}>
+              STAGE {PIPELINE_STAGES[stageIdx][0]} / {String(stageCount).padStart(2, "0")} · {PIPELINE_STAGES[stageIdx][1]}
+            </span>
+          </div>
+          <div style={S.logProgressTrack} aria-hidden="true">
+            <div style={{ ...S.logProgressFill, width: `${((stageIdx + 1) / stageCount) * 100}%` }} />
+          </div>
+
           {PIPELINE_STAGES.map(([num, code, desc], i) => {
             const state = i < stageIdx ? "done" : i === stageIdx ? "active" : "pending";
-            const color = state === "done" ? C.clear : state === "active" ? C.bright : C.muted;
+            const { word, glyph, color } = STAGE_STATES[state];
             return (
               <div key={num} style={{ ...S.stageRow, color }}>
                 <span style={{ ...S.stageNum, color: state === "active" ? C.steel : C.muted }}>{num}</span>
                 <span style={{ ...S.stageCode, color }}>{code}</span>
                 <span style={{ fontFamily: FONT_DISPLAY, fontSize: 13 }}>{desc}</span>
-                <span style={{ marginLeft: "auto", fontFamily: FONT_MONO, fontSize: 11 }}>
-                  {state === "done" ? "✓" : state === "active" ? "●" : "○"}
+                <span style={{ ...S.stageState, color: state === "done" ? C.clear : color }}>
+                  {glyph} {word}
                 </span>
               </div>
             );
@@ -461,7 +538,6 @@ const S = {
     borderColor: C.primary,
     boxShadow: `0 0 0 4px ${C.primary}26, 0 18px 48px rgba(0, 8, 30, 0.5)`,
   },
-  dropIcon: { fontSize: 30, color: C.steel, marginBottom: 14 },
   dropTitle: { fontSize: 16, fontWeight: 600, color: C.bright, marginBottom: 8 },
   dropSub: { fontFamily: FONT_MONO, fontSize: 9, color: C.muted, letterSpacing: "0.15em" },
 
@@ -611,6 +687,40 @@ const S = {
     background: `linear-gradient(90deg, transparent, ${C.cyan}, transparent)`,
     animation: "eqScan 2.4s ease-in-out infinite",
   },
+  logHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    gap: 12,
+    flexWrap: "wrap",
+    marginBottom: 10,
+  },
+  logHeaderLabel: {
+    fontFamily: FONT_MONO,
+    fontSize: 8,
+    letterSpacing: "0.2em",
+    textTransform: "uppercase",
+    color: C.muted,
+  },
+  logHeaderStage: {
+    fontFamily: FONT_MONO,
+    fontSize: 10,
+    letterSpacing: "0.12em",
+    color: C.steel,
+  },
+  logProgressTrack: {
+    height: 3,
+    background: "#1e2535",
+    borderRadius: 2,
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+  logProgressFill: {
+    height: "100%",
+    background: C.primary,
+    borderRadius: 2,
+    transition: "width 0.5s ease",
+  },
   stageRow: {
     display: "flex",
     alignItems: "center",
@@ -625,6 +735,13 @@ const S = {
     letterSpacing: "0.15em",
     width: 84,
     flexShrink: 0,
+  },
+  stageState: {
+    marginLeft: "auto",
+    flexShrink: 0,
+    fontFamily: FONT_MONO,
+    fontSize: 9,
+    letterSpacing: "0.1em",
   },
 
   // ── Results bar ──
