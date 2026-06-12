@@ -1,187 +1,50 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+// ═══════════════════════════════════════════════════════════════════════
+// EuroQuant Risk Terminal — Dashboard (design v2)
+// Renders a RiskExtractionResult (live Jarvis output or the synthetic
+// demo dataset). Brand rules per Blueprint §10: DM Mono for ALL data,
+// severity palette, graph rules (subject = Primary Blue larger, PEP =
+// red always, D-3 edges dashed), cards fadeUp staggered 50–300ms.
+// ═══════════════════════════════════════════════════════════════════════
 
-// ── Sample data — paste your Jarvis JSON output here ──────────────────
-const JARVIS_OUTPUT = {
-  "profile": {
-    "founder_id": "FND-SYNTH-BALT-014",
-    "full_name": "Kaspars Veidemanis",
-    "nationality": "LV",
-    "pep_status": "associate_pep",
-    "sanctions_hit": false,
-    "sanctions_list_source": null,
-    "associated_companies": [
-      {
-        "company_name": "Nordhaven Maritime Autonomy AS",
-        "registration_country": "EE",
-        "is_offshore_flag": false,
-        "fatf_risk_level": "low",
-        "share_percentage": 58.0,
-        "active_status": true,
-        "incorporation_date": "2020-02-18",
-        "public_procurement_exposure": true,
-        "procurement_value_eur": 6200000.0,
-        "defense_gov_tech_sector": true
-      },
-      {
-        "company_name": "Baltic Nominee Holdings Ltd",
-        "registration_country": "VG",
-        "is_offshore_flag": true,
-        "fatf_risk_level": "high",
-        "share_percentage": 100.0,
-        "active_status": true,
-        "incorporation_date": "2018-09-30",
-        "public_procurement_exposure": false,
-        "procurement_value_eur": null,
-        "defense_gov_tech_sector": false
-      },
-      {
-        "company_name": "Riga DeepSensor SIA",
-        "registration_country": "LV",
-        "is_offshore_flag": false,
-        "fatf_risk_level": "low",
-        "share_percentage": 34.0,
-        "active_status": true,
-        "incorporation_date": "2021-05-11",
-        "public_procurement_exposure": true,
-        "procurement_value_eur": 1100000.0,
-        "defense_gov_tech_sector": true
-      },
-      {
-        "company_name": "Kurzeme Defence Logistics SIA",
-        "registration_country": "LV",
-        "is_offshore_flag": false,
-        "fatf_risk_level": "medium",
-        "share_percentage": 50.0,
-        "active_status": false,
-        "incorporation_date": "2016-04-02",
-        "public_procurement_exposure": false,
-        "procurement_value_eur": null,
-        "defense_gov_tech_sector": true
-      }
-    ],
-    "political_connections": [
-      {
-        "person_name": "Andris Kalnins",
-        "role_title": "Former State Secretary, Ministry of Defence (LV)",
-        "relationship_type": "board_member",
-        "pathway_distance": 1,
-        "jurisdiction": "LV",
-        "is_pep_direct": true,
-        "still_active": false
-      },
-      {
-        "person_name": "EU Defence Fund - Capability Directorate",
-        "role_title": "EDF Capability Programme Office (Brussels)",
-        "relationship_type": "business_partner",
-        "pathway_distance": 2,
-        "jurisdiction": "EU",
-        "is_pep_direct": false,
-        "still_active": true
-      },
-      {
-        "person_name": "Liga Ozola",
-        "role_title": "MP, National Security Committee (LV)",
-        "relationship_type": "donor_recipient",
-        "pathway_distance": 2,
-        "jurisdiction": "LV",
-        "is_pep_direct": true,
-        "still_active": true
-      }
-    ],
-    "governance_intensity": 71.0,
-    "market_percentile": 88.0,
-    "risk_flags": [
-      "DIRECT BOARD-LEVEL PEP LINK: Former MoD State Secretary (LV) holds a non-executive board seat at Nordhaven, an active EU / Estonian defence procurement bidder (EUR 6.2M pipeline).",
-      "LAYERED OFFSHORE CONTROL: 100% of founder equity routed through Baltic Nominee Holdings Ltd (BVI, FATF HIGH) - beneficial ownership obscured behind a nominee structure.",
-      "INDIRECT PEP (D-2): Pathway link to a sitting MP on the National Security Committee via a political donation record - potential procurement-influence channel.",
-      "DEFENCETECH DUAL-USE EXPOSURE: Autonomous maritime C2 / sensor stack is dual-use, EU Defence Fund co-financed, with NATO-adjacent supply-chain exposure.",
-      "CUMULATIVE PUBLIC PROCUREMENT: EUR 7.3M across Nordhaven + Riga DeepSensor - concentration in a single Ministry-of-Defence buyer.",
-      "DISSOLVED ENTITY TRAIL: Kurzeme Defence Logistics SIA dissolved 2023 holding prior MoD contracts - discontinuity in the audit trail.",
-      "ADVERSE MEDIA (UNVERIFIED): 1 regional outlet alleges an undisclosed advisor relationship - single source, not corroborated."
-    ],
-    "analyst_notes": "ELEVATED GOVERNANCE RISK - ENHANCED DUE DILIGENCE REQUIRED before term sheet. Subject is sanctions-clear but exhibits a board-level PEP link and an offshore ownership layer that together breach institutional governance thresholds. Recommended pre-conditions: (1) confirm beneficial ownership of the BVI vehicle, (2) obtain a conflict-of-interest waiver covering MoD procurement, (3) verify the board member's post-public-office cooling-off compliance. JARVIS VERDICT: HIGH RISK / CONDITIONAL."
-  },
-  "processing_timestamp": "2026-06-04T09:14:08.221904+00:00",
-  "document_hash": "9f2b7c41 ae08d3 55e1c9 0b6a4f2e8d7c1a93 4e5f6a7b8c9d0e1f",
-  "extractor_version": "jarvis-v3.1.0",
-  "extraction_confidence": 0.96,
-  "used_ocr_fallback": false,
-  "neo4j_persisted": true,
-  "benchmark_percentile": 88.0,
-  "benchmark_cohort_size": 0,
-  "benchmark_source": "cold_start_fatf",
-  "reference_check": {
-    "checked_at": "2026-06-04T09:14:05.880210+00:00",
-    "sanctions_hits": [],
-    "company_verifications": [
-      {
-        "company_name": "Nordhaven Maritime Autonomy AS",
-        "verified": true
-      },
-      {
-        "company_name": "Riga DeepSensor SIA",
-        "verified": true
-      },
-      {
-        "company_name": "Kurzeme Defence Logistics SIA",
-        "verified": true
-      },
-      {
-        "company_name": "Baltic Nominee Holdings Ltd",
-        "verified": false
-      }
-    ],
-    "risk_delta": 6.0,
-    "sources_checked": [
-      "OFAC_SDN",
-      "EU_CONSOLIDATED",
-      "OPENCORPORATES"
-    ],
-    "errors": [
-      "OpenCorporates: no public filing located for Baltic Nominee Holdings Ltd (VG) - jurisdiction opacity"
-    ]
-  }
-};
+import { useState, useEffect, useRef, useMemo } from "react";
+import demoData from "./demo_data_synthetic.json";
+import {
+  C, FONT_DISPLAY, FONT_MONO, DISTANCE_COLOR,
+  giLevel, badge, card, injectGlobalStyles,
+} from "./theme";
+
+injectGlobalStyles();
 
 // ── Utilities ──────────────────────────────────────────────────────────
 const fmt = (n) =>
-  n >= 1_000_000
-    ? `€${(n / 1_000_000).toFixed(1)}M`
-    : `€${(n / 1_000).toFixed(0)}K`;
+  n >= 1_000_000 ? `€${(n / 1_000_000).toFixed(1)}M` : `€${(n / 1_000).toFixed(0)}K`;
 
-const pepLabels = {
-  direct_pep: { label: "DIRECT PEP", color: "#ff3b3b" },
-  family_pep: { label: "FAMILY PEP", color: "#ff8c00" },
-  associate_pep: { label: "ASSOCIATE PEP", color: "#ffb700" },
-  former_pep: { label: "FORMER PEP", color: "#f0c040" },
-  not_pep: { label: "CLEAN", color: "#00c896" },
+const PEP_LABELS = {
+  direct_pep:    { label: "DIRECT PEP",    color: C.critical },
+  family_pep:    { label: "FAMILY PEP",    color: C.high },
+  associate_pep: { label: "ASSOCIATE PEP", color: C.medium },
+  former_pep:    { label: "FORMER PEP",    color: C.medium },
+  not_pep:       { label: "CLEAN",         color: C.clear },
 };
 
-const fatfColors = {
-  low: "#00c896",
-  medium: "#ffb700",
-  high: "#ff8c00",
-  very_high: "#ff3b3b",
-  unknown: "#888",
+const FATF_COLORS = {
+  low: C.clear, medium: C.medium, high: C.high, very_high: C.critical, unknown: C.sub,
 };
 
-const relLabels = {
-  employer: "Employer",
-  family_member: "Family",
-  business_partner: "Partner",
-  board_member: "Board",
-  shareholder: "Shareholder",
-  legal_counsel: "Counsel",
-  other: "Other",
+const REL_LABELS = {
+  employer: "Employer", family_member: "Family", business_partner: "Partner",
+  board_member: "Board", shareholder: "Shareholder", legal_counsel: "Counsel",
+  donor_recipient: "Donor", other: "Other",
 };
 
-function getRiskLevel(gi) {
-  if (gi >= 70) return { label: "HIGH RISK", color: "#ff3b3b", bg: "rgba(255,59,59,0.10)" };
-  if (gi >= 40) return { label: "MEDIUM RISK", color: "#ffb700", bg: "rgba(255,183,0,0.10)" };
-  return { label: "LOW RISK", color: "#00c896", bg: "rgba(0,200,150,0.10)" };
-}
+// Severity by flag index — mirrors pdf_generator.py: 0–1 CRITICAL,
+// 2–3 HIGH, 4+ MEDIUM. Keep the two surfaces consistent.
+const flagSeverity = (i) =>
+  i < 2 ? { label: "CRITICAL", color: C.critical }
+  : i < 4 ? { label: "HIGH", color: C.high }
+  : { label: "MEDIUM", color: C.medium };
 
-// ── Animated counter ───────────────────────────────────────────────────
+// ── Animated counter (Blueprint §10 timing contract) ───────────────────
 function useCountUp(target, duration = 1400, delay = 0) {
   const [val, setVal] = useState(0);
   useEffect(() => {
@@ -202,72 +65,82 @@ function useCountUp(target, duration = 1400, delay = 0) {
   return val;
 }
 
-// ── GaugeArc ───────────────────────────────────────────────────────────
-function GaugeArc({ value, size = 200 }) {
+// ── GaugeArc — GI score dial, count-up 1600ms / 300ms delay ────────────
+function GaugeArc({ value, size = 210 }) {
   const animated = useCountUp(value, 1600, 300);
-  const r = 80;
+  const r = 82;
   const cx = size / 2;
-  const cy = size / 2 + 10;
+  const cy = size / 2 + 12;
   const startAngle = -210;
   const endAngle = 30;
   const totalArc = endAngle - startAngle;
   const pct = animated / 100;
   const toRad = (d) => (d * Math.PI) / 180;
+  const polar = (angle, radius) => ({
+    x: cx + radius * Math.cos(toRad(angle)),
+    y: cy + radius * Math.sin(toRad(angle)),
+  });
   const arcPath = (from, to, radius) => {
-    const s = { x: cx + radius * Math.cos(toRad(from)), y: cy + radius * Math.sin(toRad(from)) };
-    const e = { x: cx + radius * Math.cos(toRad(to)), y: cy + radius * Math.sin(toRad(to)) };
+    const s = polar(from, radius);
+    const e = polar(to, radius);
     const large = to - from > 180 ? 1 : 0;
     return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${large} 1 ${e.x} ${e.y}`;
   };
   const fillEnd = startAngle + totalArc * pct;
-  const riskColor = animated >= 70 ? "#ff3b3b" : animated >= 40 ? "#ffb700" : "#00c896";
-  // Needle
-  const needleAngle = startAngle + totalArc * pct;
-  const needleLen = r - 8;
-  const nx = cx + needleLen * Math.cos(toRad(needleAngle));
-  const ny = cy + needleLen * Math.sin(toRad(needleAngle));
+  const riskColor = animated >= 70 ? C.critical : animated >= 40 ? C.medium : C.clear;
+  const needle = polar(startAngle + totalArc * pct, r - 9);
+
+  // Threshold ticks at the regime boundaries (40 / 70) plus extremes
+  const ticks = [0, 40, 70, 100].map((v) => {
+    const a = startAngle + totalArc * (v / 100);
+    return { v, outer: polar(a, r + 12), inner: polar(a, r + 7), label: polar(a, r + 22) };
+  });
 
   return (
-    <svg width={size} height={size * 0.72} viewBox={`0 0 ${size} ${size * 0.72}`}>
+    <svg width={size} height={size * 0.74} viewBox={`0 0 ${size} ${size * 0.74}`}>
       <defs>
         <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#00c896" />
-          <stop offset="50%" stopColor="#ffb700" />
-          <stop offset="100%" stopColor="#ff3b3b" />
+          <stop offset="0%" stopColor={C.clear} />
+          <stop offset="50%" stopColor={C.medium} />
+          <stop offset="100%" stopColor={C.critical} />
         </linearGradient>
-        <filter id="glow">
+        <filter id="gaugeGlow">
           <feGaussianBlur stdDeviation="3" result="blur" />
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
       </defs>
-      {/* Track */}
-      <path d={arcPath(startAngle, endAngle, r)} fill="none" stroke="#1e2535" strokeWidth="14" strokeLinecap="round" />
-      {/* Gradient fill */}
-      <path d={arcPath(startAngle, fillEnd, r)} fill="none" stroke="url(#gaugeGrad)" strokeWidth="14" strokeLinecap="round" filter="url(#glow)" />
-      {/* Needle */}
-      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={riskColor} strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
+      {ticks.map((t) => (
+        <g key={t.v}>
+          <line x1={t.inner.x} y1={t.inner.y} x2={t.outer.x} y2={t.outer.y} stroke={C.muted} strokeWidth="1.5" />
+          <text x={t.label.x} y={t.label.y + 3} textAnchor="middle" fill={C.muted} fontSize="8" fontFamily="'DM Mono', monospace">{t.v}</text>
+        </g>
+      ))}
+      <path d={arcPath(startAngle, endAngle, r)} fill="none" stroke="#1e2535" strokeWidth="13" strokeLinecap="round" />
+      <path d={arcPath(startAngle, Math.max(fillEnd, startAngle + 0.1), r)} fill="none" stroke="url(#gaugeGrad)" strokeWidth="13" strokeLinecap="round" filter="url(#gaugeGlow)" />
+      <line x1={cx} y1={cy} x2={needle.x} y2={needle.y} stroke={riskColor} strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
       <circle cx={cx} cy={cy} r="5" fill={riskColor} />
-      {/* Value */}
-      <text x={cx} y={cy - 22} textAnchor="middle" fill={riskColor} fontSize="30" fontFamily="'DM Mono', monospace" fontWeight="700">{animated.toFixed(0)}</text>
-      <text x={cx} y={cy - 6} textAnchor="middle" fill="#4a5568" fontSize="9" fontFamily="'DM Mono', monospace" letterSpacing="2">GOVERNANCE INTENSITY</text>
+      <text x={cx} y={cy - 24} textAnchor="middle" fill={riskColor} fontSize="34" fontFamily="'DM Mono', monospace" fontWeight="500">{animated.toFixed(0)}</text>
+      <text x={cx} y={cy - 6} textAnchor="middle" fill={C.muted} fontSize="8" fontFamily="'DM Mono', monospace" letterSpacing="2">GOVERNANCE INTENSITY</text>
     </svg>
   );
 }
 
-// ── PathwayNode ─────────────────────────────────────────────────────────
-function PathwayDot({ distance, label, role, active }) {
-  const colors = { 1: "#ff3b3b", 2: "#ff8c00", 3: "#ffb700" };
-  const c = colors[distance] || "#888";
+// ── Pathway row (connections tab) ──────────────────────────────────────
+function PathwayRow({ distance, label, role, active }) {
+  const c = DISTANCE_COLOR[distance] || C.sub;
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
-      <div style={{ position: "relative", flexShrink: 0 }}>
-        <div style={{ width: 10, height: 10, borderRadius: "50%", background: c, marginTop: 4, boxShadow: `0 0 8px ${c}` }} />
+    <div className="eq-row-hover" style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "9px 6px", borderRadius: 6 }}>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: c, marginTop: 5, boxShadow: `0 0 8px ${c}`, flexShrink: 0 }} />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontFamily: FONT_MONO, color: C.text, fontWeight: 500 }}>
+          {label}
+          {!active && <span style={{ color: C.muted, marginLeft: 8, fontSize: 9 }}>INACTIVE</span>}
+        </div>
+        <div style={{ fontSize: 10, color: C.sub, marginTop: 2, lineHeight: 1.45 }}>{role}</div>
       </div>
-      <div>
-        <div style={{ fontSize: 12, fontFamily: "'DM Mono', monospace", color: "#e2e8f0", fontWeight: 600 }}>{label}</div>
-        <div style={{ fontSize: 10, color: "#4a5568", marginTop: 1 }}>{role}</div>
-      </div>
-      <div style={{ marginLeft: "auto", fontSize: 9, color: c, fontFamily: "'DM Mono', monospace", border: `1px solid ${c}33`, padding: "1px 6px", borderRadius: 3 }}>D-{distance}</div>
+      <span style={{ marginLeft: "auto", flexShrink: 0, fontSize: 9, color: c, fontFamily: FONT_MONO, border: `1px solid ${c}33`, padding: "2px 7px", borderRadius: 3 }}>
+        D-{distance}
+      </span>
     </div>
   );
 }
@@ -285,9 +158,7 @@ function mulberry32(seed) {
 
 // ── useForceSimulation — minimal force-directed layout (no d3 dependency) ──
 // Repulsion (Coulomb) + edge springs + center gravity, cooled over time.
-// Dragging a node pins it at the pointer and reheats the simulation so
-// neighbors settle around the new position — this is what makes the graph feel
-// "alive" without pulling in a heavyweight physics library.
+// Dragging pins a node at the pointer and reheats the simulation.
 function useForceSimulation(nodeDefs, edgeDefs, width, height) {
   const [, bump] = useState(0);
   const rerender = () => bump((x) => x + 1);
@@ -320,7 +191,6 @@ function useForceSimulation(nodeDefs, edgeDefs, width, height) {
 
       const { nodes } = sim;
 
-      // Coulomb repulsion — keeps nodes from overlapping
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const a = nodes[i], b = nodes[j];
@@ -333,7 +203,6 @@ function useForceSimulation(nodeDefs, edgeDefs, width, height) {
           b.vx -= fx; b.vy -= fy;
         }
       }
-      // Edge springs — pull connected nodes toward their target distance
       for (const e of edgeDefs) {
         const a = nodes.find((n) => n.id === e.source);
         const b = nodes.find((n) => n.id === e.target);
@@ -345,7 +214,6 @@ function useForceSimulation(nodeDefs, edgeDefs, width, height) {
         a.vx += fx; a.vy += fy;
         b.vx -= fx; b.vy -= fy;
       }
-      // Integrate — gravity toward center, damping, bounds
       for (const n of nodes) {
         if (n.id === sim.dragId) { n.vx = 0; n.vy = 0; continue; }
         n.vx += (width / 2 - n.x) * 0.0015;
@@ -377,19 +245,16 @@ function useForceSimulation(nodeDefs, edgeDefs, width, height) {
   };
 }
 
-// ── NetworkGraph — Neo4j pathway visualization (Brand Identity §04) ──────
-// Interactive, force-directed: subject + political connections + controlled
-// companies, rendered straight to SVG with a lightweight in-house simulation
-// (no charting library — keeps the dashboard a single-file JSX component).
+// ── NetworkGraph — Neo4j pathway visualization ──────────────────────────
+// Graph rules (Blueprint §10): subject = Primary Blue, larger radius ·
+// PEP nodes = Critical Red, always · D-3 edges dashed · edge labels in
+// #0d1420 pills, centered · node labels DM Mono 9px.
 function NetworkGraph({ connections, companies, verifications, subjectName }) {
   const W = 560, H = 420;
   const svgRef = useRef(null);
   const dragId = useRef(null);
-  const distColor = { 1: "#ff3b3b", 2: "#ff8c00", 3: "#ffb700" };
   const distWidth = { 1: 2.4, 2: 1.4, 3: 1.4 };
 
-  // Build node + edge definitions once per data change — identity stability
-  // is what lets useForceSimulation keep its running layout across re-renders.
   const { nodeDefs, edgeDefs } = useMemo(() => {
     const nd = [{ id: "subject", kind: "subject", label: (subjectName || "SUBJECT").split(" ")[0], r: 28 }];
     const ed = [];
@@ -401,7 +266,7 @@ function NetworkGraph({ connections, companies, verifications, subjectName }) {
       });
       ed.push({
         source: "subject", target: id, distance: c.pathway_distance,
-        color: distColor[c.pathway_distance] || "#888",
+        color: DISTANCE_COLOR[c.pathway_distance] || C.sub,
         length: 100 + c.pathway_distance * 36,
       });
     });
@@ -433,9 +298,9 @@ function NetworkGraph({ connections, companies, verifications, subjectName }) {
   };
 
   const nodeColor = (n) => {
-    if (n.kind === "subject") return "#003399";
-    if (n.kind === "connection") return n.isPep ? "#ff3b3b" : "#00c896";
-    return "#ff8c00"; // company nodes — Brand §04 risk palette
+    if (n.kind === "subject") return C.primary;
+    if (n.kind === "connection") return n.isPep ? C.critical : C.clear;
+    return n.offshore ? C.high : C.steel; // offshore vehicles escalate to HIGH
   };
 
   return (
@@ -451,14 +316,13 @@ function NetworkGraph({ connections, companies, verifications, subjectName }) {
         <filter id="ngGlow"><feGaussianBlur stdDeviation="2.6" /></filter>
       </defs>
 
-      {/* edges — drawn first so nodes sit on top */}
       {edgeDefs.map((e, i) => {
         const a = byId(e.source), b = byId(e.target);
         if (!a || !b) return null;
         const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
         const isPathway = e.distance != null;
         const label = isPathway ? `D-${e.distance}` : `${e.share}%`;
-        const pillW = isPathway ? 28 : 32;
+        const pillW = isPathway ? 28 : 34;
         return (
           <g key={`e${i}`}>
             <line
@@ -468,13 +332,12 @@ function NetworkGraph({ connections, companies, verifications, subjectName }) {
               strokeDasharray={e.distance === 3 ? "5 5" : "0"}
               opacity={isPathway ? 0.75 : 0.4}
             />
-            <rect x={mx - pillW / 2} y={my - 9} width={pillW} height="18" rx="4" fill="#0d1420" stroke={e.color} strokeWidth="1" opacity={isPathway ? 1 : 0.8} />
-            <text x={mx} y={my + 4} textAnchor="middle" fill={e.color} fontSize="9" fontFamily="'DM Mono', monospace" fontWeight="700">{label}</text>
+            <rect x={mx - pillW / 2} y={my - 9} width={pillW} height="18" rx="4" fill={C.card} stroke={e.color} strokeWidth="1" opacity={isPathway ? 1 : 0.8} />
+            <text x={mx} y={my + 4} textAnchor="middle" fill={e.color} fontSize="9" fontFamily="'DM Mono', monospace" fontWeight="500">{label}</text>
           </g>
         );
       })}
 
-      {/* nodes */}
       {nodes.map((n) => {
         const col = nodeColor(n);
         const isSubject = n.kind === "subject";
@@ -491,13 +354,13 @@ function NetworkGraph({ connections, companies, verifications, subjectName }) {
               pin(n.id, n.x, n.y);
             }}
           >
-            {isSubject && <circle cx={n.x} cy={n.y} r={n.r + 5} fill="#00339922" filter="url(#ngGlow)" />}
+            {isSubject && <circle cx={n.x} cy={n.y} r={n.r + 5} fill={`${C.primary}22`} filter="url(#ngGlow)" />}
             <circle cx={n.x} cy={n.y} r={n.r} fill={`${col}22`} stroke={col} strokeWidth={isSubject ? 2.4 : 1.6} />
-            {isSubject && <text x={n.x} y={n.y - 1} textAnchor="middle" fill="#4a90d9" fontSize="9" fontFamily="'DM Mono', monospace" fontWeight="700">SUBJECT</text>}
-            {n.kind === "connection" && n.isPep && <text x={n.x} y={n.y + 3} textAnchor="middle" fill={col} fontSize="8" fontFamily="'DM Mono', monospace" fontWeight="700">PEP</text>}
-            {n.kind === "company" && n.offshore && <text x={n.x} y={n.y + 3} textAnchor="middle" fill={col} fontSize="7" fontFamily="'DM Mono', monospace" fontWeight="700">OFFSHORE</text>}
-            <text x={n.x} y={isSubject ? n.y + 11 : labelY} textAnchor="middle" fill="#e2e8f0" fontSize="9" fontFamily="'DM Mono', monospace">{nm}</text>
-            {!isSubject && <text x={n.x} y={labelY + 11} textAnchor="middle" fill="#56657f" fontSize="7.5">{n.sub}</text>}
+            {isSubject && <text x={n.x} y={n.y - 1} textAnchor="middle" fill={C.steel} fontSize="9" fontFamily="'DM Mono', monospace" fontWeight="500">SUBJECT</text>}
+            {n.kind === "connection" && n.isPep && <text x={n.x} y={n.y + 3} textAnchor="middle" fill={col} fontSize="8" fontFamily="'DM Mono', monospace" fontWeight="500">PEP</text>}
+            {n.kind === "company" && n.offshore && <text x={n.x} y={n.y + 3} textAnchor="middle" fill={col} fontSize="7" fontFamily="'DM Mono', monospace" fontWeight="500">OFFSHORE</text>}
+            <text x={n.x} y={isSubject ? n.y + 11 : labelY} textAnchor="middle" fill={C.text} fontSize="9" fontFamily="'DM Mono', monospace">{nm}</text>
+            {!isSubject && <text x={n.x} y={labelY + 11} textAnchor="middle" fill="#56657f" fontSize="7.5" fontFamily="'DM Mono', monospace">{n.sub}</text>}
           </g>
         );
       })}
@@ -505,440 +368,470 @@ function NetworkGraph({ connections, companies, verifications, subjectName }) {
   );
 }
 
-// ── Main Dashboard ──────────────────────────────────────────────────────
-export default function EuroQuantDashboard({ data = JARVIS_OUTPUT }) {
-  const p = data.profile;
-  const gi = useCountUp(p.governance_intensity, 1600, 300);
-  const mp = useCountUp(p.market_percentile, 1400, 600);
-  const riskLevel = getRiskLevel(p.governance_intensity);
-  const pep = pepLabels[p.pep_status] || pepLabels.not_pep;
-  const totalProcurement = p.associated_companies.reduce((s, c) => s + (c.procurement_value_eur || 0), 0);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [visible, setVisible] = useState(false);
+// ── Distance legend (shared by connections + network tabs) ─────────────
+function DistanceLegend() {
+  const rows = [
+    [1, C.critical, "Direct connection", "Subject personally connected"],
+    [2, C.high, "1 intermediary", "Connected via one entity"],
+    [3, C.medium, "2 intermediaries", "Connected via two entities — dashed edge, lower certainty"],
+  ];
+  return (
+    <>
+      {rows.map(([d, c, lbl, desc]) => (
+        <div key={d} style={{ display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: c + "1a", border: `1px solid ${c}55`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span style={{ fontSize: 11, fontFamily: FONT_MONO, color: c, fontWeight: 500 }}>{d}</span>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: C.text, fontWeight: 500 }}>{lbl}</div>
+            <div style={{ fontSize: 10, color: C.sub, marginTop: 2, lineHeight: 1.4 }}>{desc}</div>
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
 
-  useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
+// ── Indicative factor decomposition — derived from the profile so the
+// breakdown tracks real data instead of hardcoded demo values.
+function deriveFactors(p) {
+  const pepPts = { direct_pep: 30, family_pep: 25, associate_pep: 18, former_pep: 10, not_pep: 0 }[p.pep_status] ?? 0;
+  const offshore = (p.associated_companies || []).some((c) => c.is_offshore_flag) ? 20 : 0;
+  const procurementEur = (p.associated_companies || []).reduce((s, c) => s + (c.procurement_value_eur || 0), 0);
+  const procurement = Math.min(25, Math.round(procurementEur / 1_000_000) * 3);
+  const network = Math.min(
+    25,
+    (p.political_connections || []).reduce((s, c) => s + ({ 1: 10, 2: 5, 3: 2 }[c.pathway_distance] || 0), 0)
+  );
+  return [
+    ["PEP Status", pepPts, 30, C.critical],
+    ["Offshore Exposure", offshore, 20, C.high],
+    ["Procurement Conflict", procurement, 25, C.medium],
+    ["Political Network", network, 25, C.steel],
+  ];
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════
+
+export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
+  const p = data.profile;
+  const mp = useCountUp(p.market_percentile, 1400, 600);
+  const riskLevel = giLevel(p.governance_intensity);
+  const pep = PEP_LABELS[p.pep_status] || PEP_LABELS.not_pep;
+  const totalProcurement = p.associated_companies.reduce((s, c) => s + (c.procurement_value_eur || 0), 0);
+  const factors = useMemo(() => deriveFactors(p), [p]);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const ts = new Date(data.processing_timestamp);
-  const tsStr = ts.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) +
+  const tsStr =
+    ts.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) +
     " · " + ts.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) + " UTC";
 
-  const styles = {
-    root: {
-      minHeight: "100vh",
-      background: `
-        radial-gradient(900px 600px at 12% -5%, #0b2a6b22, transparent 60%),
-        radial-gradient(800px 600px at 100% 8%, #00204f33, transparent 55%),
-        #080c14`,
-      color: "#e2e8f0",
-      fontFamily: "'DM Sans', sans-serif",
-      padding: "0 0 60px 0",
-    },
-    topbar: {
-      borderBottom: "1px solid #131a27",
-      padding: "14px 32px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      background: "#0a0f1a",
-      position: "sticky",
-      top: 0,
-      zIndex: 100,
-    },
-    logo: {
-      fontFamily: "'DM Mono', monospace",
-      fontSize: 13,
-      letterSpacing: "0.18em",
-      color: "#4a90d9",
-      fontWeight: 700,
-    },
-    badge: (color, bg) => ({
-      fontSize: 10,
-      fontFamily: "'DM Mono', monospace",
-      letterSpacing: "0.1em",
-      color,
-      background: bg || color + "18",
-      border: `1px solid ${color}44`,
-      padding: "3px 9px",
-      borderRadius: 4,
-      fontWeight: 700,
-    }),
-    card: (extra = {}) => ({
-      background: "#0d1420",
-      border: "1px solid #131a27",
-      borderRadius: 8,
-      padding: "20px 22px",
-      ...extra,
-    }),
-    label: {
-      fontSize: 9,
-      fontFamily: "'DM Mono', monospace",
-      letterSpacing: "0.15em",
-      color: "#2d3a50",
-      textTransform: "uppercase",
-      marginBottom: 6,
-    },
-    sectionTitle: {
-      fontSize: 10,
-      fontFamily: "'DM Mono', monospace",
-      letterSpacing: "0.2em",
-      color: "#2d3a50",
-      textTransform: "uppercase",
-      marginBottom: 14,
-      paddingBottom: 8,
-      borderBottom: "1px solid #131a27",
-    },
-    tab: (active) => ({
-      fontSize: 10,
-      fontFamily: "'DM Mono', monospace",
-      letterSpacing: "0.12em",
-      color: active ? "#4a90d9" : "#2d3a50",
-      background: active ? "#4a90d91a" : "transparent",
-      border: active ? "1px solid #4a90d933" : "1px solid transparent",
-      padding: "6px 14px",
-      borderRadius: 4,
-      cursor: "pointer",
-      transition: "all 0.15s",
-    }),
+  const verifications = data.reference_check?.company_verifications || [];
+  const unverified = verifications.filter((v) => !v.verified).length;
+  const sourceStatus = (src) => {
+    if (src === "OPENCORPORATES") {
+      return unverified > 0
+        ? { color: C.medium, label: `${unverified} UNVERIFIED` }
+        : { color: C.clear, label: "✓ VERIFIED" };
+    }
+    return (data.reference_check?.sanctions_hits || []).length > 0
+      ? { color: C.critical, label: "⚠ HIT" }
+      : { color: C.clear, label: "✓ CLEAR" };
   };
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #080c14; }
-        ::-webkit-scrollbar-thumb { background: #1e2535; border-radius: 2px; }
-        .fade-in { opacity: 0; transform: translateY(12px); animation: fadeUp 0.5s ease forwards; }
-        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
-        .row-hover:hover { background: #131a2788 !important; }
-        .verdict-pulse { animation: pulse 2.5s ease-in-out infinite; }
-        @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 #ff3b3b33} 50%{box-shadow:0 0 0 8px transparent} }
-      `}</style>
+    <div style={D.root}>
+      {/* ── Topbar ── */}
+      <div style={D.topbar}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={D.logo}>EUROQUANT</span>
+          <span style={{ color: "#1e2535", fontSize: 12 }}>|</span>
+          <span style={{ fontSize: 10, color: C.muted, fontFamily: FONT_MONO, letterSpacing: "0.15em" }}>RISK TERMINAL</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {isDemo
+            ? <span style={badge(C.medium)}>SYNTHETIC DEMO</span>
+            : <span style={badge(C.clear)}>● LIVE ANALYSIS</span>}
+          <span style={{ fontSize: 10, color: C.muted, fontFamily: FONT_MONO }}>{data.extractor_version}</span>
+        </div>
+      </div>
 
-      <div style={styles.root}>
-        {/* ── Topbar ── */}
-        <div style={styles.topbar}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <span style={styles.logo}>EUROQUANT</span>
-            <span style={{ color: "#1e2535", fontSize: 12 }}>|</span>
-            <span style={{ fontSize: 11, color: "#2d3a50", fontFamily: "'DM Mono', monospace" }}>RISK TERMINAL</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={styles.badge("#ffb700")}>SYNTHETIC DEMO</span>
-            <span style={{ fontSize: 10, color: "#2d3a50", fontFamily: "'DM Mono', monospace" }}>{data.extractor_version}</span>
-            <span style={styles.badge("#00c896")}>● LIVE</span>
+      {/* ── Audit strip — Blueprint §10 exact audit copy ── */}
+      <div style={D.auditStrip}>
+        SHA-256: {data.document_hash || "—"} · Processed {tsStr}
+        {data.used_ocr_fallback ? " · OCR FALLBACK" : ""}
+      </div>
+
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "26px 24px 0" }}>
+
+        {/* ── Subject header ── */}
+        <div className="eq-fade" style={{ "--d": "50ms", marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
+            <div>
+              <div style={D.label}>Due Diligence Subject</div>
+              <h1 style={D.subjectName}>{p.full_name}</h1>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={badge(pep.color)}>{pep.label}</span>
+                {p.sanctions_hit
+                  ? <span style={badge(C.critical)}>⚠ SANCTIONS HIT</span>
+                  : <span style={badge(C.clear)}>✓ SANCTIONS CLEAR</span>}
+                <span style={badge(C.steel)}>ID: {p.founder_id}</span>
+                <span style={{ fontSize: 10, color: C.muted, fontFamily: FONT_MONO }}>{p.nationality}</span>
+              </div>
+            </div>
+            <div
+              className="eq-verdict"
+              style={{
+                "--pulse-color": riskLevel.color + "33",
+                background: riskLevel.bg,
+                border: `1px solid ${riskLevel.color}44`,
+                borderRadius: 10,
+                padding: "14px 24px",
+                textAlign: "center",
+                minWidth: 150,
+              }}
+            >
+              <div style={{ fontSize: 8, fontFamily: FONT_MONO, color: riskLevel.color, letterSpacing: "0.2em", marginBottom: 4 }}>JARVIS VERDICT</div>
+              <div style={{ fontSize: 17, fontWeight: 500, color: riskLevel.color, fontFamily: FONT_MONO }}>{riskLevel.label}</div>
+              <div style={{ fontSize: 9, color: riskLevel.color + "99", marginTop: 3, fontFamily: FONT_MONO }}>
+                {p.governance_intensity >= 70 ? "ENHANCED DD REQUIRED" : p.governance_intensity >= 40 ? "CAUTION" : "CLEARED FOR REVIEW"}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* ── Main content ── */}
-        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 24px 0" }}>
-
-          {/* ── Subject header ── */}
-          <div className="fade-in" style={{ animationDelay: "0.05s", marginBottom: 24 }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-              <div>
-                <div style={styles.label}>Due Diligence Subject</div>
-                <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em", color: "#f0f4ff", marginBottom: 6 }}>
-                  {p.full_name}
-                </h1>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <span style={styles.badge(pep.color)}>{pep.label}</span>
-                  {p.sanctions_hit
-                    ? <span style={styles.badge("#ff3b3b")}>⚠ SANCTIONS HIT</span>
-                    : <span style={styles.badge("#00c896")}>✓ SANCTIONS CLEAR</span>}
-                  <span style={styles.badge("#4a90d9")}>ID: {p.founder_id}</span>
-                  <span style={{ fontSize: 10, color: "#2d3a50", fontFamily: "'DM Mono', monospace", padding: "3px 0" }}>{tsStr}</span>
+        {/* ── Score row ── */}
+        <div className="eq-fade" style={{ "--d": "120ms", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+          <div className="eq-card-hover" style={{ ...card(), gridColumn: "span 2", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <GaugeArc value={p.governance_intensity} size={210} />
+            <div style={{ display: "flex", gap: 22, marginTop: -4 }}>
+              {[["LOW", "<40", C.clear], ["MEDIUM", "40–70", C.medium], ["HIGH", ">70", C.critical]].map(([l, r, c]) => (
+                <div key={l} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 8, color: c, fontFamily: FONT_MONO, letterSpacing: "0.12em" }}>{l}</div>
+                  <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO }}>{r}</div>
                 </div>
-              </div>
-              {/* Verdict */}
-              <div className="verdict-pulse" style={{
-                background: riskLevel.bg,
-                border: `1px solid ${riskLevel.color}44`,
-                borderRadius: 8,
-                padding: "14px 22px",
-                textAlign: "center",
-                minWidth: 140,
-              }}>
-                <div style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: riskLevel.color, letterSpacing: "0.15em", marginBottom: 4 }}>VERDICT</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: riskLevel.color, fontFamily: "'DM Mono', monospace" }}>{riskLevel.label}</div>
-                <div style={{ fontSize: 9, color: riskLevel.color + "99", marginTop: 3 }}>{p.governance_intensity >= 70 ? "ENHANCED DD REQUIRED" : p.governance_intensity >= 40 ? "CAUTION" : "CLEARED FOR REVIEW"}</div>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* ── Score row ── */}
-          <div className="fade-in" style={{ animationDelay: "0.12s", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-            {/* GI Gauge */}
-            <div style={{ ...styles.card(), gridColumn: "span 2", display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <GaugeArc value={p.governance_intensity} size={200} />
-              <div style={{ display: "flex", gap: 20, marginTop: -6 }}>
-                {[["LOW", "<40", "#00c896"], ["MEDIUM", "40–70", "#ffb700"], ["HIGH", ">70", "#ff3b3b"]].map(([l, r, c]) => (
-                  <div key={l} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 8, color: c, fontFamily: "'DM Mono', monospace", letterSpacing: "0.1em" }}>{l}</div>
-                    <div style={{ fontSize: 8, color: "#2d3a50" }}>{r}</div>
+          <div className="eq-card-hover" style={{ ...card(), display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={D.label}>Market Percentile</div>
+            <div>
+              <div style={{ fontSize: 44, fontFamily: FONT_MONO, fontWeight: 500, color: riskLevel.color, lineHeight: 1 }}>
+                {mp.toFixed(0)}<span style={{ fontSize: 18 }}>th</span>
+              </div>
+              <div style={{ fontSize: 9, color: C.muted, marginTop: 6, fontFamily: FONT_MONO }}>
+                {data.benchmark_source === "neo4j_distribution"
+                  ? `PORTFOLIO N=${data.benchmark_cohort_size}`
+                  : "FATF/EBA COLD-START"}
+              </div>
+            </div>
+            <div>
+              <div style={{ background: C.border, borderRadius: 3, height: 4, marginTop: 12 }}>
+                <div style={{ width: `${p.market_percentile}%`, height: "100%", background: `linear-gradient(90deg, ${C.clear}, ${C.critical})`, borderRadius: 3, transition: "width 1.4s cubic-bezier(0.16,1,0.3,1)" }} />
+              </div>
+              <div style={{ fontSize: 9, color: C.muted, marginTop: 5 }}>vs European VC/PE market</div>
+            </div>
+          </div>
+
+          <div className="eq-card-hover" style={{ ...card(), display: "flex", flexDirection: "column", gap: 13 }}>
+            {[
+              ["Confidence", `${(data.extraction_confidence * 100).toFixed(0)}%`, C.steel],
+              ["Procurement", fmt(totalProcurement), C.high],
+              ["Companies", p.associated_companies.length, C.text],
+              ["Connections", p.political_connections.length, C.text],
+            ].map(([lbl, val, col]) => (
+              <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 10, color: C.sub }}>{lbl}</span>
+                <span style={{ fontSize: 13, fontFamily: FONT_MONO, color: col, fontWeight: 500 }}>{val}</span>
+              </div>
+            ))}
+            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 11, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 10, color: C.sub }}>Neo4j</span>
+              <span style={{ fontSize: 10, fontFamily: FONT_MONO, color: data.neo4j_persisted ? C.clear : C.medium }}>
+                {data.neo4j_persisted ? "● PERSISTED" : "○ LOCAL"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Tabs — active state Primary Blue (Blueprint §10) ── */}
+        <div className="eq-fade" style={{ "--d": "180ms", display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+          {["overview", "companies", "connections", "network", "flags"].map((t) => (
+            <button key={t} className="eq-tab" style={D.tab(activeTab === t)} onClick={() => setActiveTab(t)}>
+              {t.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tab content ── */}
+        <div className="eq-fade" style={{ "--d": "240ms" }}>
+
+          {activeTab === "overview" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div className="eq-card-hover" style={{ ...card({ borderLeft: `3px solid ${riskLevel.color}` }), gridColumn: "span 2" }}>
+                <div style={D.sectionTitle}>Analyst Assessment</div>
+                <p style={{ fontSize: 12.5, lineHeight: 1.75, color: C.sub, margin: 0 }}>{p.analyst_notes}</p>
+              </div>
+
+              <div className="eq-card-hover" style={card()}>
+                <div style={D.sectionTitle}>Reference Layer</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {(data.reference_check?.sources_checked || []).map((src) => {
+                    const st = sourceStatus(src);
+                    return (
+                      <div key={src} className="eq-row-hover" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 6px", borderRadius: 6 }}>
+                        <span style={{ fontSize: 11, fontFamily: FONT_MONO, color: C.sub }}>{src}</span>
+                        <span style={badge(st.color)}>{st.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {(data.reference_check?.errors || []).map((err, i) => (
+                  <div key={i} style={{ marginTop: 12, padding: "9px 12px", background: `${C.medium}0c`, border: `1px solid ${C.medium}26`, borderRadius: 6, fontSize: 10, color: C.sub, lineHeight: 1.5 }}>
+                    {err}
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* Market Percentile */}
-            <div style={{ ...styles.card(), display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              <div style={styles.label}>Market Percentile</div>
-              <div>
-                <div style={{ fontSize: 42, fontFamily: "'DM Mono', monospace", fontWeight: 700, color: "#ff3b3b", lineHeight: 1 }}>
-                  {mp.toFixed(0)}<span style={{ fontSize: 18 }}>th</span>
-                </div>
-                <div style={{ fontSize: 9, color: "#2d3a50", marginTop: 6 }}>
-                  {data.benchmark_source === "neo4j_distribution"
-                    ? `Portfolio N=${data.benchmark_cohort_size}`
-                    : "FATF/EBA cold-start"}
-                </div>
-              </div>
-              {/* Bar */}
-              <div style={{ background: "#131a27", borderRadius: 3, height: 4, marginTop: 12 }}>
-                <div style={{ width: `${p.market_percentile}%`, height: "100%", background: "linear-gradient(90deg, #00c896, #ff3b3b)", borderRadius: 3, transition: "width 1.4s cubic-bezier(0.16,1,0.3,1)" }} />
-              </div>
-              <div style={{ fontSize: 9, color: "#2d3a50", marginTop: 4 }}>vs European VC/PE market</div>
-            </div>
-
-            {/* Quick stats */}
-            <div style={{ ...styles.card(), display: "flex", flexDirection: "column", gap: 14 }}>
-              {[
-                ["Confidence", `${(data.extraction_confidence * 100).toFixed(0)}%`, "#4a90d9"],
-                ["Procurement", fmt(totalProcurement), "#ff8c00"],
-                ["Companies", p.associated_companies.length, "#e2e8f0"],
-                ["Connections", p.political_connections.length, "#e2e8f0"],
-              ].map(([lbl, val, col]) => (
-                <div key={lbl} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 10, color: "#2d3a50" }}>{lbl}</span>
-                  <span style={{ fontSize: 13, fontFamily: "'DM Mono', monospace", color: col, fontWeight: 600 }}>{val}</span>
-                </div>
-              ))}
-              <div style={{ borderTop: "1px solid #131a27", paddingTop: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 10, color: "#2d3a50" }}>Neo4j</span>
-                  <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: data.neo4j_persisted ? "#00c896" : "#ff3b3b" }}>
-                    {data.neo4j_persisted ? "● PERSISTED" : "○ LOCAL"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Tabs ── */}
-          <div className="fade-in" style={{ animationDelay: "0.18s", display: "flex", gap: 6, marginBottom: 16 }}>
-            {["overview", "companies", "connections", "network", "flags"].map((t) => (
-              <button key={t} style={styles.tab(activeTab === t)} onClick={() => setActiveTab(t)}>
-                {t.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          {/* ── Tab content ── */}
-          <div className="fade-in" style={{ animationDelay: "0.22s" }}>
-
-            {/* OVERVIEW */}
-            {activeTab === "overview" && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                {/* Analyst verdict */}
-                <div style={{ ...styles.card({ borderColor: "#ff3b3b33" }), gridColumn: "span 2" }}>
-                  <div style={styles.sectionTitle}>Analyst Assessment</div>
-                  <p style={{ fontSize: 12, lineHeight: 1.7, color: "#8899aa" }}>
-                    {p.analyst_notes?.split("\n")[0]}
-                  </p>
-                </div>
-
-                {/* Reference check */}
-                <div style={styles.card()}>
-                  <div style={styles.sectionTitle}>Reference Layer</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {data.reference_check.sources_checked.map((src) => (
-                      <div key={src} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }} className="row-hover">
-                        <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: "#4a5568" }}>{src}</span>
-                        <span style={styles.badge("#00c896")}>✓ CLEAR</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Score breakdown */}
-                <div style={styles.card()}>
-                  <div style={styles.sectionTitle}>Score Breakdown</div>
-                  {[
-                    ["PEP Status", 30, 30, "#ff3b3b"],
-                    ["Offshore Exposure", 20, 20, "#ff8c00"],
-                    ["Procurement Conflict", 25, 25, "#ffb700"],
-                    ["Political Network", 20, 25, "#4a90d9"],
-                  ].map(([lbl, val, max, col]) => (
-                    <div key={lbl} style={{ marginBottom: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ fontSize: 10, color: "#4a5568" }}>{lbl}</span>
-                        <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: col }}>{val}/{max}</span>
-                      </div>
-                      <div style={{ background: "#131a27", borderRadius: 2, height: 3 }}>
-                        <div style={{ width: `${(val / max) * 100}%`, height: "100%", background: col, borderRadius: 2 }} />
-                      </div>
+              <div className="eq-card-hover" style={card()}>
+                <div style={D.sectionTitle}>Score Decomposition</div>
+                {factors.map(([lbl, val, max, col]) => (
+                  <div key={lbl} style={{ marginBottom: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                      <span style={{ fontSize: 10, color: C.sub }}>{lbl}</span>
+                      <span style={{ fontSize: 10, fontFamily: FONT_MONO, color: col }}>{val}/{max}</span>
                     </div>
-                  ))}
+                    <div style={{ background: C.border, borderRadius: 2, height: 3 }}>
+                      <div style={{ width: `${(val / max) * 100}%`, height: "100%", background: col, borderRadius: 2, transition: "width 1s cubic-bezier(0.16,1,0.3,1)" }} />
+                    </div>
+                  </div>
+                ))}
+                <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, letterSpacing: "0.1em", marginTop: 6 }}>
+                  INDICATIVE FACTOR DECOMPOSITION
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* COMPANIES */}
-            {activeTab === "companies" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {p.associated_companies.map((c, i) => (
-                  <div key={i} style={{ ...styles.card(), display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "start" }} className="row-hover">
+          {activeTab === "companies" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {p.associated_companies.map((c, i) => {
+                const rail = c.is_offshore_flag ? C.high : !c.active_status ? C.muted : FATF_COLORS[c.fatf_risk_level] || C.border;
+                const v = verifications.find((x) => x.company_name === c.company_name);
+                return (
+                  <div key={i} className="eq-card-hover" style={{ ...card({ borderLeft: `3px solid ${rail}` }), display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "start" }}>
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>{c.company_name}</span>
-                        {c.is_offshore_flag && <span style={styles.badge("#ff3b3b")}>OFFSHORE</span>}
-                        {c.defense_gov_tech_sector && <span style={styles.badge("#ff8c00")}>DEFENSTECH</span>}
-                        {!c.active_status && <span style={styles.badge("#888")}>DISSOLVED</span>}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>{c.company_name}</span>
+                        {c.is_offshore_flag && <span style={badge(C.high)}>OFFSHORE</span>}
+                        {c.defense_gov_tech_sector && <span style={badge(C.steel)}>DEFENSETECH</span>}
+                        {!c.active_status && <span style={badge(C.muted)}>DISSOLVED</span>}
+                        {v && !v.verified && <span style={badge(C.medium)}>UNVERIFIED</span>}
                       </div>
-                      <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
                         {[
-                          ["Country", c.registration_country],
-                          ["Stake", `${c.share_percentage}%`],
-                          ["Incorporated", c.incorporation_date || "—"],
-                          ["FATF", c.fatf_risk_level.toUpperCase()],
-                        ].map(([l, v]) => (
+                          ["COUNTRY", c.registration_country, C.sub],
+                          ["STAKE", `${c.share_percentage}%`, C.sub],
+                          ["INCORPORATED", c.incorporation_date || "—", C.sub],
+                          ["FATF", c.fatf_risk_level.toUpperCase().replace("_", " "), FATF_COLORS[c.fatf_risk_level]],
+                        ].map(([l, val, col]) => (
                           <div key={l}>
-                            <div style={{ fontSize: 9, color: "#2d3a50", fontFamily: "'DM Mono', monospace" }}>{l}</div>
-                            <div style={{ fontSize: 11, color: l === "FATF" ? fatfColors[c.fatf_risk_level] : "#8899aa", fontFamily: "'DM Mono', monospace" }}>{v}</div>
+                            <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, letterSpacing: "0.15em" }}>{l}</div>
+                            <div style={{ fontSize: 11, color: col, fontFamily: FONT_MONO, marginTop: 2 }}>{val}</div>
                           </div>
                         ))}
                       </div>
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      {c.public_procurement_exposure && c.procurement_value_eur && (
-                        <div>
-                          <div style={{ fontSize: 9, color: "#ff8c00", fontFamily: "'DM Mono', monospace", letterSpacing: "0.1em" }}>PROCUREMENT</div>
-                          <div style={{ fontSize: 18, fontFamily: "'DM Mono', monospace", fontWeight: 700, color: "#ff8c00" }}>{fmt(c.procurement_value_eur)}</div>
-                        </div>
-                      )}
-                    </div>
+                    {c.public_procurement_exposure && c.procurement_value_eur && (
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 8, color: C.high, fontFamily: FONT_MONO, letterSpacing: "0.15em" }}>PROCUREMENT</div>
+                        <div style={{ fontSize: 19, fontFamily: FONT_MONO, fontWeight: 500, color: C.high, marginTop: 2 }}>{fmt(c.procurement_value_eur)}</div>
+                      </div>
+                    )}
                   </div>
+                );
+              })}
+            </div>
+          )}
+
+          {activeTab === "connections" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div className="eq-card-hover" style={card()}>
+                <div style={D.sectionTitle}>Political Network</div>
+                {p.political_connections.map((pc, i) => (
+                  <PathwayRow
+                    key={i}
+                    distance={pc.pathway_distance}
+                    label={pc.person_name}
+                    role={`${REL_LABELS[pc.relationship_type] || pc.relationship_type} · ${pc.jurisdiction} · ${pc.role_title}`}
+                    active={pc.still_active}
+                  />
                 ))}
               </div>
-            )}
-
-            {/* CONNECTIONS */}
-            {activeTab === "connections" && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <div style={styles.card()}>
-                  <div style={styles.sectionTitle}>Political Network</div>
-                  {p.political_connections.map((pc, i) => (
-                    <PathwayDot
-                      key={i}
-                      distance={pc.pathway_distance}
-                      label={pc.person_name}
-                      role={`${relLabels[pc.relationship_type] || pc.relationship_type} · ${pc.jurisdiction} · ${pc.role_title}`}
-                      active={pc.still_active}
-                    />
-                  ))}
-                </div>
-                <div style={styles.card()}>
-                  <div style={styles.sectionTitle}>Distance Legend</div>
-                  {[[1, "#ff3b3b", "Direct connection", "Subject personally connected"], [2, "#ff8c00", "1 intermediary", "Connected via one entity"], [3, "#ffb700", "2 intermediaries", "Connected via two entities"]].map(([d, c, lbl, desc]) => (
-                    <div key={d} style={{ display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" }}>
-                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: c + "1a", border: `1px solid ${c}44`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: c, fontWeight: 700 }}>{d}</span>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 500 }}>{lbl}</div>
-                        <div style={{ fontSize: 10, color: "#4a5568", marginTop: 2 }}>{desc}</div>
-                      </div>
-                    </div>
-                  ))}
-                  <div style={{ marginTop: 16, padding: "10px 12px", background: "#080c14", borderRadius: 6, border: "1px solid #131a27" }}>
-                    <div style={{ fontSize: 9, color: "#2d3a50", fontFamily: "'DM Mono', monospace", marginBottom: 6 }}>NEO4J GRAPH</div>
-                    <div style={{ fontSize: 10, color: "#4a5568" }}>
-                      {p.political_connections.filter(c => c.pathway_distance === 1).length} direct ·{" "}
-                      {p.political_connections.filter(c => c.pathway_distance === 2).length} indirect ·{" "}
-                      {p.political_connections.filter(c => c.is_pep_direct).length} PEP nodes
-                    </div>
+              <div className="eq-card-hover" style={card()}>
+                <div style={D.sectionTitle}>Pathway Distance</div>
+                <DistanceLegend />
+                <div style={{ marginTop: 14, padding: "10px 13px", background: C.canvas, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, marginBottom: 6, letterSpacing: "0.2em" }}>NEO4J GRAPH</div>
+                  <div style={{ fontSize: 11, color: C.sub, fontFamily: FONT_MONO }}>
+                    {p.political_connections.filter((c) => c.pathway_distance === 1).length} direct ·{" "}
+                    {p.political_connections.filter((c) => c.pathway_distance > 1).length} indirect ·{" "}
+                    {p.political_connections.filter((c) => c.is_pep_direct).length} PEP nodes
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* NETWORK */}
-            {activeTab === "network" && (
-              <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 14 }}>
-                <div style={styles.card()}>
-                  <div style={styles.sectionTitle}>Neo4j Pathway Graph</div>
-                  <div style={{ fontSize: 9, color: "#56657f", fontFamily: "'DM Mono', monospace", letterSpacing: "0.08em", marginBottom: 8 }}>
-                    DRAG NODES TO EXPLORE · FORCE-DIRECTED LAYOUT
-                  </div>
-                  <NetworkGraph
-                    connections={p.political_connections}
-                    companies={p.associated_companies}
-                    verifications={data.reference_check?.company_verifications}
-                    subjectName={p.full_name}
-                  />
+          {activeTab === "network" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 14 }}>
+              <div className="eq-card-hover" style={card()}>
+                <div style={D.sectionTitle}>Neo4j Pathway Graph</div>
+                <div style={{ fontSize: 9, color: "#56657f", fontFamily: FONT_MONO, letterSpacing: "0.1em", marginBottom: 8 }}>
+                  DRAG NODES TO EXPLORE · FORCE-DIRECTED LAYOUT
                 </div>
-                <div style={styles.card()}>
-                  <div style={styles.sectionTitle}>Distance Legend</div>
-                  {[[1, "#ff3b3b", "Direct connection", "Subject personally connected"], [2, "#ff8c00", "1 intermediary", "Connected via one entity"], [3, "#ffb700", "2 intermediaries", "Connected via two entities"]].map(([d, c, lbl, desc]) => (
-                    <div key={d} style={{ display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" }}>
-                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: c + "1a", border: `1px solid ${c}55`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: c, fontWeight: 700 }}>{d}</span>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 500 }}>{lbl}</div>
-                        <div style={{ fontSize: 10, color: "#56657f", marginTop: 2 }}>{desc}</div>
-                      </div>
+                <NetworkGraph
+                  connections={p.political_connections}
+                  companies={p.associated_companies}
+                  verifications={verifications}
+                  subjectName={p.full_name}
+                />
+              </div>
+              <div className="eq-card-hover" style={card()}>
+                <div style={D.sectionTitle}>Distance Legend</div>
+                <DistanceLegend />
+                <div style={{ marginTop: 14, padding: "10px 13px", background: C.canvas, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, marginBottom: 8, letterSpacing: "0.2em" }}>NODE KEY</div>
+                  {[[C.primary, "Subject (larger radius)"], [C.critical, "PEP — always red"], [C.high, "Offshore vehicle"], [C.steel, "Company"], [C.clear, "Non-PEP contact"]].map(([col, lbl]) => (
+                    <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 6 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: col, flexShrink: 0 }} />
+                      <span style={{ fontSize: 10, color: C.sub }}>{lbl}</span>
                     </div>
                   ))}
-                  <div style={{ marginTop: 12, padding: "11px 13px", background: "#070d18", borderRadius: 8, border: "1px solid #131a27" }}>
-                    <div style={{ fontSize: 9, color: "#7f90ab", fontFamily: "'DM Mono', monospace", marginBottom: 6, letterSpacing: "0.1em" }}>GRAPH NETWORK</div>
-                    <div style={{ fontSize: 11, color: "#aab6c9" }}>
-                      {p.political_connections.filter(c => c.pathway_distance === 1).length} direct ·{" "}
-                      {p.political_connections.filter(c => c.pathway_distance === 2).length} indirect ·{" "}
-                      {p.political_connections.filter(c => c.is_pep_direct).length} PEP nodes
-                    </div>
-                  </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* FLAGS */}
-            {activeTab === "flags" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {p.risk_flags.map((flag, i) => {
-                  const severity = i < 2 ? "#ff3b3b" : i < 4 ? "#ff8c00" : "#ffb700";
-                  const sLabel = i < 2 ? "CRITICAL" : i < 4 ? "HIGH" : "MEDIUM";
-                  return (
-                    <div key={i} style={{ ...styles.card({ borderLeft: `3px solid ${severity}`, paddingLeft: 16 }), display: "flex", gap: 14, alignItems: "flex-start" }} className="row-hover">
-                      <div style={{ minWidth: 60 }}>
-                        <span style={styles.badge(severity)}>{sLabel}</span>
-                      </div>
-                      <p style={{ fontSize: 11, lineHeight: 1.6, color: "#8899aa" }}>{flag}</p>
+          {activeTab === "flags" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {p.risk_flags.map((flag, i) => {
+                const sev = flagSeverity(i);
+                return (
+                  <div key={i} className="eq-card-hover" style={{ ...card({ borderLeft: `3px solid ${sev.color}`, padding: "16px 18px" }), display: "flex", gap: 14, alignItems: "flex-start" }}>
+                    <div style={{ minWidth: 74 }}>
+                      <span style={badge(sev.color)}>{sev.label}</span>
                     </div>
-                  );
-                })}
-                <div style={{ ...styles.card({ borderColor: "#4a90d933", marginTop: 8 }) }}>
-                  <div style={{ fontSize: 9, color: "#2d3a50", fontFamily: "'DM Mono', monospace", marginBottom: 6 }}>PROCESSING METADATA</div>
-                  <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                    {[
-                      ["Extracted by", data.extractor_version],
-                      ["Confidence", `${(data.extraction_confidence * 100).toFixed(0)}%`],
-                      ["Doc hash", data.processing_timestamp ? data.processing_timestamp.slice(0, 10) : "—"],
-                      ["OCR fallback", data.used_ocr_fallback ? "Yes" : "No"],
-                    ].map(([l, v]) => (
-                      <div key={l}>
-                        <div style={{ fontSize: 9, color: "#2d3a50" }}>{l}</div>
-                        <div style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: "#4a5568" }}>{v}</div>
-                      </div>
-                    ))}
+                    <p style={{ fontSize: 11.5, lineHeight: 1.65, color: C.sub, margin: 0 }}>{flag}</p>
                   </div>
+                );
+              })}
+              <div style={{ ...card({ borderColor: `${C.steel}33`, marginTop: 8 }) }}>
+                <div style={D.sectionTitle}>Processing Metadata</div>
+                <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
+                  {[
+                    ["EXTRACTOR", data.extractor_version],
+                    ["CONFIDENCE", `${(data.extraction_confidence * 100).toFixed(0)}%`],
+                    ["SHA-256", (data.document_hash || "—").slice(0, 24) + "…"],
+                    ["OCR FALLBACK", data.used_ocr_fallback ? "YES" : "NO"],
+                    ["BENCHMARK", data.benchmark_source === "neo4j_distribution" ? `NEO4J N=${data.benchmark_cohort_size}` : "FATF COLD-START"],
+                  ].map(([l, val]) => (
+                    <div key={l}>
+                      <div style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, letterSpacing: "0.15em" }}>{l}</div>
+                      <div style={{ fontSize: 11, fontFamily: FONT_MONO, color: C.sub, marginTop: 3 }}>{val}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════════════════
+
+const D = {
+  root: {
+    minHeight: "100vh",
+    background: `
+      radial-gradient(900px 600px at 12% -5%, #0b2a6b22, transparent 60%),
+      radial-gradient(800px 600px at 100% 8%, #00204f33, transparent 55%),
+      ${C.canvas}`,
+    color: C.text,
+    fontFamily: FONT_DISPLAY,
+    paddingBottom: 60,
+  },
+  topbar: {
+    borderBottom: `1px solid ${C.border}`,
+    padding: "13px 32px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    background: "#0a0f1a",
+  },
+  logo: {
+    fontFamily: FONT_MONO,
+    fontSize: 13,
+    letterSpacing: "0.22em",
+    color: C.steel,
+    fontWeight: 500,
+  },
+  auditStrip: {
+    fontFamily: FONT_MONO,
+    fontSize: 9,
+    letterSpacing: "0.08em",
+    color: C.muted,
+    background: "#0a0f1a",
+    borderBottom: `1px solid ${C.border}`,
+    padding: "7px 32px",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  label: {
+    fontFamily: FONT_MONO,
+    fontSize: 8,
+    letterSpacing: "0.2em",
+    color: C.muted,
+    textTransform: "uppercase",
+    marginBottom: 7,
+  },
+  subjectName: {
+    fontSize: 28,
+    fontWeight: 700,
+    letterSpacing: "-0.02em",
+    color: C.bright,
+    margin: "0 0 8px 0",
+    fontFamily: FONT_DISPLAY,
+  },
+  sectionTitle: {
+    fontFamily: FONT_MONO,
+    fontSize: 8,
+    letterSpacing: "0.2em",
+    color: C.muted,
+    textTransform: "uppercase",
+    marginBottom: 14,
+    paddingBottom: 9,
+    borderBottom: `1px solid ${C.border}`,
+  },
+  tab: (active) => ({
+    fontFamily: FONT_MONO,
+    fontSize: 10,
+    letterSpacing: "0.12em",
+    color: active ? C.bright : C.muted,
+    background: active ? C.primary : "transparent",
+    border: active ? `1px solid ${C.primary}` : `1px solid ${C.border}`,
+    padding: "7px 15px",
+    borderRadius: 5,
+    cursor: "pointer",
+  }),
+};
