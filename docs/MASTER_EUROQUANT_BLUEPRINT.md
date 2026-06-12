@@ -586,6 +586,7 @@ LOG_LEVEL=INFO
 - **Claude Code** manages the repo and files directly. **Claude.ai Project Knowledge** stays lean (4–5 canonical files); sync rule: **the repo is edited first**, Project Knowledge mirrors only canonical docs.
 - **Obsidian (optional):** open the repo folder as a vault for reading/notes — same files, no duplication.
 - **Sync rule:** anything that changes architecture/schema/strategy → update this Blueprint in the repo, bump version, then mirror to Project Knowledge.
+- **PDF brand fonts must ship in `api/fonts/` + Docker image (Dockerfile `COPY . .` includes them) — verified 12 Jun 2026** (report renders IBM Plex Sans + DM Mono, zero Helvetica-drawn glyphs).
 
 ---
 
