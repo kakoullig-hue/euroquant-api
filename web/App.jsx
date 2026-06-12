@@ -14,7 +14,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import EuroQuantDashboard from "./EuroQuantDashboard";
 import { analyzePdf, downloadReport, downloadBlob, checkApiHealth, hasApiKey, API_BASE } from "./api_client";
 import demoData from "./demo_data_synthetic.json";
-import { C, FONT_DISPLAY, FONT_MONO, injectGlobalStyles, badge, card } from "./theme";
+import { C, FONT_DISPLAY, FONT_MONO, injectGlobalStyles, card } from "./theme";
 
 injectGlobalStyles();
 
@@ -100,7 +100,6 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: C.canvas }}>
       <ResultsBar
         founderName={result?.profile?.full_name || "Demo Subject"}
-        isDemo={!requestId}
         onReset={handleReset}
         onDownload={handleDownloadReport}
         downloading={downloading}
@@ -354,7 +353,7 @@ function ProcessingScreen({ file, elapsed }) {
 // RESULTS TOP BAR
 // ═══════════════════════════════════════════════════════════════════════
 
-function ResultsBar({ founderName, isDemo, onReset, onDownload, downloading, hasReport }) {
+function ResultsBar({ founderName, onReset, onDownload, downloading, hasReport }) {
   return (
     <div style={S.resultsBar}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -362,7 +361,7 @@ function ResultsBar({ founderName, isDemo, onReset, onDownload, downloading, has
         <span style={S.resultsName}>{founderName}</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {isDemo && <span style={badge(C.medium)}>SYNTHETIC DEMO</span>}
+        {/* demo provenance badge lives in the dashboard topbar — not duplicated here */}
         {hasReport && (
           // Blueprint §10 — exact post-analysis confirmation copy.
           <div style={S.destroyBadge}>
