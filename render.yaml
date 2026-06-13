@@ -35,7 +35,11 @@ services:
     # so this bundle can never embed a gateway key. Root serves the Risk
     # Terminal demo (dashboard.html copied to index.html — DEMO_URL points
     # at the bare domain).
-    buildCommand: cd web && npm ci && npm run build && cp dist/dashboard.html dist/index.html
+    # NOTE: the trailing `cd ..` is load-bearing — Render resolves
+    # staticPublishPath relative to the build command's final working
+    # directory. Without returning to the repo root, it looks for
+    # web/web/dist and fails with "Publish directory web/dist does not exist".
+    buildCommand: cd web && npm ci && npm run build && cp dist/dashboard.html dist/index.html && cd ..
     staticPublishPath: web/dist
     headers:
       - path: /*
