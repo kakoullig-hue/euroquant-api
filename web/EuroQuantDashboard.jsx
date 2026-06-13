@@ -489,7 +489,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
   return (
     <div style={D.root}>
       {/* ── Topbar ── */}
-      <div style={D.topbar}>
+      <div className="eq-pad-x" style={D.topbar}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={D.logo}>EUROQUANT</span>
           <span style={{ color: "#1e2535", fontSize: 12 }}>|</span>
@@ -504,12 +504,12 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
       </div>
 
       {/* ── Audit strip — Blueprint §10 exact audit copy ── */}
-      <div style={D.auditStrip}>
+      <div className="eq-audit eq-pad-x" style={D.auditStrip}>
         SHA-256: {data.document_hash || "—"} · Processed {tsStr}
         {data.used_ocr_fallback ? " · OCR FALLBACK" : ""}
       </div>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 24px 0" }}>
+      <div className="eq-pad-x" style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 24px 0" }}>
 
         {/* ── Subject header ── */}
         <div className="eq-fade" style={{ "--d": "50ms", marginBottom: 24 }}>
@@ -548,8 +548,8 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
         </div>
 
         {/* ── Score row ── */}
-        <div className="eq-fade" style={{ "--d": "120ms", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
-          <div className="eq-card-hover" style={{ ...card({ padding: "20px 24px 16px" }), gridColumn: "span 2", display: "flex", flexDirection: "column" }}>
+        <div className="eq-fade eq-score-grid" style={{ "--d": "120ms", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+          <div className="eq-card-hover eq-gi-card" style={{ ...card({ padding: "20px 24px 16px" }), gridColumn: "span 2", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", width: "100%" }}>
               <span style={D.label}>Governance Intensity Score</span>
               <span style={{ fontSize: 8, color: C.muted, fontFamily: FONT_MONO, letterSpacing: "0.1em" }}>
@@ -641,7 +641,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
         <div className="eq-fade" style={{ "--d": "240ms" }}>
 
           {activeTab === "overview" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div className="eq-two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div className="eq-card-hover" style={{ ...card({ borderLeft: `3px solid ${riskLevel.color}` }), gridColumn: "span 2" }}>
                 <div style={D.sectionTitle}>Analyst Assessment</div>
                 <p style={{ fontSize: 12.5, lineHeight: 1.75, color: C.sub, margin: 0 }}>{p.analyst_notes}</p>
@@ -693,7 +693,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
                 const rail = c.is_offshore_flag ? C.high : !c.active_status ? C.muted : FATF_COLORS[c.fatf_risk_level] || C.border;
                 const v = verifications.find((x) => x.company_name === c.company_name);
                 return (
-                  <div key={i} className="eq-card-hover" style={{ ...card({ borderLeft: `3px solid ${rail}` }), display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "start" }}>
+                  <div key={i} className="eq-card-hover eq-company-card" style={{ ...card({ borderLeft: `3px solid ${rail}` }), display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "start" }}>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>{c.company_name}</span>
@@ -717,7 +717,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
                       </div>
                     </div>
                     {c.public_procurement_exposure && c.procurement_value_eur && (
-                      <div style={{ textAlign: "right" }}>
+                      <div className="eq-company-proc" style={{ textAlign: "right" }}>
                         <div style={{ fontSize: 8, color: C.high, fontFamily: FONT_MONO, letterSpacing: "0.15em" }}>PROCUREMENT</div>
                         <div style={{ fontSize: 19, fontFamily: FONT_MONO, fontWeight: 500, color: C.high, marginTop: 2 }}>{fmt(c.procurement_value_eur)}</div>
                       </div>
@@ -729,7 +729,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
           )}
 
           {activeTab === "connections" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div className="eq-two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div className="eq-card-hover" style={card()}>
                 <div style={D.sectionTitle}>Political Network</div>
                 {p.political_connections.map((pc, i) => (
@@ -758,7 +758,7 @@ export default function EuroQuantDashboard({ data = demoData, isDemo = true }) {
           )}
 
           {activeTab === "network" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16 }}>
+            <div className="eq-two-col" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16 }}>
               <div className="eq-card-hover" style={card()}>
                 <div style={D.sectionTitle}>Neo4j Pathway Graph</div>
                 <div style={{ fontSize: 9, color: "#56657f", fontFamily: FONT_MONO, letterSpacing: "0.1em", marginBottom: 8 }}>
@@ -846,6 +846,10 @@ const D = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    // wrap/gap are inert on desktop (space-between keeps groups at the edges);
+    // on a phone the badge group drops to a second line instead of overflowing.
+    flexWrap: "wrap",
+    gap: 10,
     background: "#0a0f1a",
   },
   logo: {

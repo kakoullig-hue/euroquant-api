@@ -126,7 +126,7 @@ function Wordmark() {
 
 function Topbar({ right }) {
   return (
-    <div style={S.topbar}>
+    <div className="eq-pad-x" style={S.topbar}>
       <Wordmark />
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>{right}</div>
     </div>
@@ -293,7 +293,7 @@ function UploadScreen({ onAnalyze, onDemo, error, apiHealthy }) {
         </div>
       </div>
 
-      <div style={S.pageFooter}>
+      <div className="eq-pad-x" style={S.pageFooter}>
         <span>© 2026 EUROQUANT · ADVISORY OUTPUT</span>
         <span style={{ fontFamily: FONT_MONO }}>{API_BASE.replace(/^https?:\/\//, "")}</span>
       </div>
@@ -432,7 +432,7 @@ function ProcessingScreen({ file, elapsed }) {
 
 function ResultsBar({ founderName, onReset, onDownload, downloading, hasReport }) {
   return (
-    <div style={S.resultsBar}>
+    <div className="eq-pad-x" style={S.resultsBar}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={S.resultsLabel}>ANALYSIS COMPLETE</span>
         <span style={S.resultsName}>{founderName}</span>
@@ -477,6 +477,9 @@ const S = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    // inert on desktop; lets the status badge wrap below the wordmark on phones
+    flexWrap: "wrap",
+    gap: 10,
     padding: "12px 32px",
     background: "#0a0f1acc",
     backdropFilter: "blur(8px)",
@@ -630,6 +633,8 @@ const S = {
   pageFooter: {
     display: "flex",
     justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
     padding: "16px 32px",
     borderTop: `1px solid ${C.border}`,
     fontFamily: FONT_MONO,

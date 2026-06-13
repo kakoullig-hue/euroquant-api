@@ -148,6 +148,56 @@ const GLOBAL_CSS = `
     .eq-fade { animation: none; opacity: 1; }
     .eq-pulse, .eq-verdict { animation: none; }
   }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     RESPONSIVE — layout only, never a brand-token change. Desktop
+     (≥1024px) is untouched: every rule below is gated behind a max-width
+     media query, so nothing engages until the viewport narrows. Inline
+     grid templates are overridden with !important (same lever .eq-tab-active
+     uses to beat inline styles).
+  ──────────────────────────────────────────────────────────────────────── */
+
+  /* KPI score row: 4-col desktop → 2-col tablet → single column on phones.
+     The GI gauge card (span 2) drops to its own full-width row so the
+     gauge and the breakdown stack vertically instead of crowding. */
+  @media (max-width: 1023px) {
+    .eq-score-grid { grid-template-columns: 1fr 1fr !important; }
+    .eq-gi-card    { grid-column: span 2 !important; }
+  }
+  @media (max-width: 600px) {
+    .eq-score-grid { grid-template-columns: 1fr !important; }
+    .eq-gi-card    { grid-column: span 1 !important; }
+  }
+
+  /* Two-column tab panels (overview / connections / network) collapse to a
+     single column on tablet-portrait and below — no side-by-side crush. */
+  @media (max-width: 820px) {
+    .eq-two-col       { grid-template-columns: 1fr !important; }
+    .eq-two-col > *   { grid-column: auto !important; }
+  }
+
+  /* Company rows: detail block + procurement figure stack as a card. */
+  @media (max-width: 600px) {
+    .eq-company-card { grid-template-columns: 1fr !important; }
+    .eq-company-proc { text-align: left !important; }
+  }
+
+  /* Audit strip: wrap the SHA-256 + timestamp instead of clipping it. */
+  @media (max-width: 760px) {
+    .eq-audit {
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      word-break: break-all !important;
+      line-height: 1.55 !important;
+    }
+  }
+
+  /* Tighten chrome gutters on phones so sticky bars never push past the
+     viewport edge (avoids horizontal page scroll). */
+  @media (max-width: 600px) {
+    .eq-pad-x { padding-left: 16px !important; padding-right: 16px !important; }
+  }
 `;
 
 export function injectGlobalStyles() {
