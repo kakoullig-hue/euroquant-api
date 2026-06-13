@@ -32,15 +32,17 @@ services:
     name: euroquant-demo
     runtime: static
     # Demo-only build: vite.config.js hard-fails if VITE_API_KEY is present,
-    # so this bundle can never embed a gateway key. Root serves the Risk
-    # Terminal demo (dashboard.html copied to index.html — DEMO_URL points
-    # at the bare domain).
-    # NOTE: the trailing `cd ..` is load-bearing — Render resolves
-    # staticPublishPath relative to the build command's final working
-    # directory. Without returning to the repo root, it looks for
-    # web/web/dist and fails with "Publish directory web/dist does not exist".
-    buildCommand: cd web && npm ci && npm run build && cp dist/dashboard.html dist/index.html && cd ..
-    staticPublishPath: web/dist
+    # so this bundle can never embed a gateway key. dashboard.html is copied
+    # to index.html so the bare domain (DEMO_URL) serves the Risk Terminal.
+    #
+    # The built files are copied to a top-level `public/` and that is the
+    # publish path. This is deliberate: Render's publish-path resolution for
+    # this service does not reliably honour a subdirectory (both `web/dist`
+    # and a root-dir=web + `dist` config failed with "does not exist"). The
+    # build's shell ends at the repo root (cd ..) and `public/` lives at the
+    # repo root, so the path resolves no matter how Render interprets it.
+    buildCommand: cd web && npm ci && npm run build && cp dist/dashboard.html dist/index.html && cd .. && rm -rf public && cp -r web/dist public
+    staticPublishPath: public
     headers:
       - path: /*
         name: Cache-Control
